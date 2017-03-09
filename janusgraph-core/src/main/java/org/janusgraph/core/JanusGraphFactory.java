@@ -25,10 +25,10 @@ import org.janusgraph.diskstorage.StandardStoreManager;
 import org.janusgraph.diskstorage.configuration.*;
 import org.janusgraph.diskstorage.configuration.backend.CommonsConfiguration;
 import org.janusgraph.graphdb.configuration.GraphDatabaseConfiguration;
+import org.janusgraph.graphdb.management.JanusGraphManager;
+import org.janusgraph.graphdb.database.StandardJanusGraph;
 
 import static org.janusgraph.graphdb.configuration.GraphDatabaseConfiguration.*;
-
-import org.janusgraph.graphdb.database.StandardJanusGraph;
 
 import org.janusgraph.graphdb.log.StandardLogProcessorFramework;
 import org.janusgraph.graphdb.log.StandardTransactionLogProcessor;
@@ -37,6 +37,9 @@ import org.apache.commons.configuration.Configuration;
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.PropertiesConfiguration;
 import org.apache.commons.lang.StringUtils;
+import org.apache.tinkerpop.gremlin.structure.Graph;
+
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -56,7 +59,7 @@ public class JanusGraphFactory {
 
     private static final Logger log =
             LoggerFactory.getLogger(JanusGraphFactory.class);
-
+    
     /**
      * Opens a {@link JanusGraph} database.
      * <p/>
@@ -104,7 +107,16 @@ public class JanusGraphFactory {
      * @return JanusGraph graph database
      */
     public static JanusGraph open(ReadConfiguration configuration) {
-        return new StandardJanusGraph(new GraphDatabaseConfiguration(configuration));
+        System.out.println("Config::::");
+        Iterator iter = configuration.getKeys("graphname").iterator();
+        while(iter.hasNext()) {
+            System.out.println("KEY : " + iter.next());
+        }
+        System.out.println("INSTANCE : " + JanusGraphManager.getInstance());
+        
+        return (JanusGraph) JanusGraphManager.getInstance().openGraph(configuration, () -> {
+            return new StandardJanusGraph(new GraphDatabaseConfiguration(configuration));
+        });
     }
 
     /**
@@ -188,12 +200,17 @@ public class JanusGraphFactory {
         else {
             int pos = shortcutOrFile.indexOf(':');
             if (pos<0) pos = shortcutOrFile.length();
-            String backend = shortcutOrFile.substring(0,pos);
+            String graphName = shortcutOrFile.substring(0,pos);
+            String restOfString = shortcutOrFile.substring(pos+1);
+            int secondPos = restOfString.indexOf(':');
+            if (secondPos < 0) secondPos = restOfString.length();
+            String backend = restOfString.substring(0, secondPos);
             Preconditions.checkArgument(StandardStoreManager.getAllManagerClasses().containsKey(backend.toLowerCase()), "Backend shorthand unknown: %s", backend);
             String secondArg = null;
-            if (pos+1<shortcutOrFile.length()) secondArg = shortcutOrFile.substring(pos + 1).trim();
+            if (secondPos+1<restOfString.length()) secondArg = restOfString.substring(pos + 1).trim();
             BaseConfiguration config = new BaseConfiguration();
             ModifiableConfiguration writeConfig = new ModifiableConfiguration(ROOT_NS,new CommonsConfiguration(config), BasicConfiguration.Restriction.NONE);
+            writeConfig.set(GRAPH_NAME, graphName);
             writeConfig.set(STORAGE_BACKEND,backend);
             ConfigOption option = Backend.getOptionForShorthand(backend);
             if (option==null) {
