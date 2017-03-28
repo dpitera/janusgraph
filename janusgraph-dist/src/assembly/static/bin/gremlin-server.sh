@@ -53,6 +53,10 @@ if [ "$JAVA_OPTIONS" = "" ] ; then
     JAVA_OPTIONS="-Xms32m -Xmx512m -javaagent:$LIB/jamm-0.3.0.jar"
 fi
 
+if [ "$2" = "-d" ]; then
+  JAVA_OPTIONS="$JAVA_OPTIONS"" -agentlib:jdwp=transport=dt_socket,server=y,address=8000,suspend=n"
+fi
+
 # Execute the application and return its exit code
 set -x
 if [ "$1" = "-i" ]; then
