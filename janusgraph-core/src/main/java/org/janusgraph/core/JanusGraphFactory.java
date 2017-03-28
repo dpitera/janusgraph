@@ -24,19 +24,26 @@ import org.janusgraph.diskstorage.Backend;
 import org.janusgraph.diskstorage.StandardStoreManager;
 import org.janusgraph.diskstorage.configuration.*;
 import org.janusgraph.diskstorage.configuration.backend.CommonsConfiguration;
+import org.janusgraph.graphdb.management.JanusGraphManager;
+import org.janusgraph.graphdb.management.ConfigurationGraphManagement;
+import org.janusgraph.graphdb.database.StandardJanusGraph;
 import org.janusgraph.graphdb.configuration.GraphDatabaseConfiguration;
+import org.janusgraph.diskstorage.configuration.ConfigNamespace;
+import org.janusgraph.diskstorage.configuration.ConfigOption;
 
 import static org.janusgraph.graphdb.configuration.GraphDatabaseConfiguration.*;
 
-import org.janusgraph.graphdb.database.StandardJanusGraph;
-
 import org.janusgraph.graphdb.log.StandardLogProcessorFramework;
 import org.janusgraph.graphdb.log.StandardTransactionLogProcessor;
-import org.apache.commons.configuration.BaseConfiguration;
 import org.apache.commons.configuration.Configuration;
+import org.apache.commons.configuration.BaseConfiguration;
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.PropertiesConfiguration;
+import org.apache.commons.configuration.MapConfiguration;
 import org.apache.commons.lang.StringUtils;
+import org.apache.tinkerpop.gremlin.structure.Graph;
+import org.apache.tinkerpop.gremlin.structure.Vertex;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,6 +51,10 @@ import java.io.File;
 import java.time.Instant;
 import java.util.Iterator;
 import java.util.regex.Pattern;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
 
 /**
  * JanusGraphFactory is used to open or instantiate a JanusGraph graph database.
@@ -87,12 +98,11 @@ public class JanusGraphFactory {
         return open(new CommonsConfiguration(configuration));
     }
 
-    /**
-     * Opens a {@link JanusGraph} database configured according to the provided configuration.
+    /** Opens a {@link JanusGraph} database configured according to the provided configuration.
      *
      * @param configuration Configuration for the graph database
      * @return JanusGraph graph database
-     */
+    */
     public static JanusGraph open(BasicConfiguration configuration) {
         return open(configuration.getConfiguration());
     }
@@ -186,24 +196,44 @@ public class JanusGraphFactory {
         File file = new File(shortcutOrFile);
         if (file.exists()) return getLocalConfiguration(file);
         else {
-            int pos = shortcutOrFile.indexOf(':');
-            if (pos<0) pos = shortcutOrFile.length();
-            String backend = shortcutOrFile.substring(0,pos);
+            MapConfiguration config = new MapConfiguration(new HashMap<String, Object>());
+            Map<String, Object> map = config.getMap();
+            String backend = null;
+            String ipsOrDirectory = null;
+            String[] parts = shortcutOrFile.split(":");
+
+            String graphNameProp = GRAPH_NAME.toStringWithoutRoot();
+            if (parts.length == 1) {
+                backend = parts[0];
+            } else if ((parts.length == 2) && (parts[1].equals("inmemory"))) {
+                String graphName = parts[0];
+                backend = parts[1];
+                map.put(graphNameProp, graphName);
+            } else if (parts.length == 2) {
+                backend = parts[0];
+                ipsOrDirectory = parts[1];
+            } else if (parts.length == 3) {
+                String graphName = parts[0];
+                backend = parts[1];
+                ipsOrDirectory = parts[2];
+                map.put(graphNameProp, graphName);
+            } else {
+                throw new RuntimeException("Please supply a string of the form \"inmemory\" or \"<graph>:inmemory\" or \"<backend>:<ipsOrDirectory>\" or \"<graph>:<backend>:<ipsOrDirectory>\".");
+            }
             Preconditions.checkArgument(StandardStoreManager.getAllManagerClasses().containsKey(backend.toLowerCase()), "Backend shorthand unknown: %s", backend);
-            String secondArg = null;
-            if (pos+1<shortcutOrFile.length()) secondArg = shortcutOrFile.substring(pos + 1).trim();
-            BaseConfiguration config = new BaseConfiguration();
-            ModifiableConfiguration writeConfig = new ModifiableConfiguration(ROOT_NS,new CommonsConfiguration(config), BasicConfiguration.Restriction.NONE);
-            writeConfig.set(STORAGE_BACKEND,backend);
+            map.put(STORAGE_BACKEND.toStringWithoutRoot(), backend);
             ConfigOption option = Backend.getOptionForShorthand(backend);
             if (option==null) {
-                Preconditions.checkArgument(secondArg==null);
-            } else if (option==STORAGE_DIRECTORY || option==STORAGE_CONF_FILE) {
-                Preconditions.checkArgument(StringUtils.isNotBlank(secondArg),"Need to provide additional argument to initialize storage backend");
-                writeConfig.set(option,getAbsolutePath(secondArg));
+                Preconditions.checkArgument(ipsOrDirectory==null);
+            } else if (option==STORAGE_DIRECTORY) {
+                Preconditions.checkArgument(StringUtils.isNotBlank(ipsOrDirectory),"Need to provide additional argument to initialize storage backend");
+                map.put(STORAGE_DIRECTORY.toStringWithoutRoot(), getAbsolutePath(ipsOrDirectory));
+            } else if (option==STORAGE_CONF_FILE) {
+                Preconditions.checkArgument(StringUtils.isNotBlank(ipsOrDirectory),"Need to provide additional argument to initialize storage backend");
+                map.put(STORAGE_CONF_FILE.toStringWithoutRoot(), getAbsolutePath(ipsOrDirectory));
             } else if (option==STORAGE_HOSTS) {
-                Preconditions.checkArgument(StringUtils.isNotBlank(secondArg),"Need to provide additional argument to initialize storage backend");
-                writeConfig.set(option,new String[]{secondArg});
+                Preconditions.checkArgument(StringUtils.isNotBlank(ipsOrDirectory),"Need to provide additional argument to initialize storage backend");
+                map.put(STORAGE_HOSTS.toStringWithoutRoot(), new String[]{ipsOrDirectory});
             } else throw new IllegalArgumentException("Invalid configuration option for backend "+option);
             return new CommonsConfiguration(config);
         }
