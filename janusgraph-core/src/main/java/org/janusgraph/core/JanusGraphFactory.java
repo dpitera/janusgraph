@@ -147,15 +147,17 @@ public class JanusGraphFactory {
      * @param configuration Graph
      * @return JanusGraph
      */
-    public JanusGraph close(String graphName) throws InterruptedException {
+    public static JanusGraph close(String graphName) throws InterruptedException {
         return (JanusGraph) JanusGraphManager.getInstance().removeGraph(graphName);
     }
 
-    /** Closes a {@link JanusGraph} graph
+    /** 
+     * Closes a {@link JanusGraph} graph
+     * 
      * @param configuration Graph
      * @return JanusGraph
      */
-    public JanusGraph close(Graph graph) throws Exception {
+    public static JanusGraph close(Graph graph) throws Exception {
         Graph g = JanusGraphManager.getInstance().removeGraph(((StandardJanusGraph) graph).getGraphName());
         if (g == null) { //this graph reference is not being tracked by JanusGraphManager reference tracker
             graph.close();
