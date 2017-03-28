@@ -114,7 +114,54 @@ public class JanusGraphFactory {
      * @return JanusGraph graph database
      */
     public static JanusGraph open(ReadConfiguration configuration) {
-        return new StandardJanusGraph(new GraphDatabaseConfiguration(configuration));
+        ModifiableConfiguration config = new ModifiableConfiguration(ROOT_NS, (WriteConfiguration) configuration, BasicConfiguration.Restriction.NONE);
+        if (config.has(GRAPH_NAME)) {
+            String graphName = config.get(GRAPH_NAME);
+            String backend = config.get(STORAGE_BACKEND);
+
+            // Update keyspace/table/storage_directory acc. to graph_name if not supplied
+            List<String> cassandra = StandardStoreManager.getAllCassandraShorthands();
+            if (cassandra.contains(backend) && !config.has(CASSANDRA_KEYSPACE)) {
+                config.set(CASSANDRA_KEYSPACE, graphName);
+            }
+            List<String> hbase = StandardStoreManager.getAllHbaseShorthands();
+            if (hbase.contains(backend) && !config.has(HBASE_TABLE)) {
+                config.set(HBASE_TABLE, graphName);
+            }
+            List<String> berkeley = StandardStoreManager.getAllBerkeleyShorthands();
+            if (berkeley.contains(backend) && !config.has(STORAGE_DIRECTORY)) {
+                config.set(STORAGE_DIRECTORY, config.get(STORAGE_ROOT) + "/" + graphName);
+            }
+
+            return (JanusGraph) JanusGraphManager.getInstance().openGraph(graphName, (gName) -> {
+                return new StandardJanusGraph(new GraphDatabaseConfiguration(configuration));
+            });
+        } else {
+            return new StandardJanusGraph(new GraphDatabaseConfiguration(configuration));
+        }
+    }
+
+    /**
+     * Closes a {@link JanusGraph} graph by supplying {@link String} graphName.
+     *
+     * @param configuration Graph
+     * @return JanusGraph
+     */
+    public JanusGraph close(String graphName) throws InterruptedException {
+        return (JanusGraph) JanusGraphManager.getInstance().removeGraph(graphName);
+    }
+
+    /** Closes a {@link JanusGraph} graph
+     * @param configuration Graph
+     * @return JanusGraph
+     */
+    public JanusGraph close(Graph graph) throws Exception {
+        Graph g = JanusGraphManager.getInstance().removeGraph(((StandardJanusGraph) graph).getGraphName());
+        if (g == null) { //this graph reference is not being tracked by JanusGraphManager reference tracker
+            graph.close();
+            return (JanusGraph) graph;
+        }
+        return (JanusGraph) g;
     }
 
     /**
