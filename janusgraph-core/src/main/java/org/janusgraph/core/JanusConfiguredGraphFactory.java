@@ -127,8 +127,10 @@ public class JanusConfiguredGraphFactory {
     public static JanusGraph close(String graphName) throws InterruptedException {
         return (JanusGraph) JanusGraphManager.getInstance().removeGraph(graphName);
     }
-
-    private static Map<String, Object> mutateMapBasedOnBackendAndGraphName(final Map<String, Object> map, final String graphName) {
+    
+     
+    // Exposed for unit Testing 
+    protected static Map<String, Object> mutateMapBasedOnBackendAndGraphName(final Map<String, Object> map, final String graphName) {
         String backend = (String) map.get(STORAGE_BACKEND.toStringWithoutRoot());
         String cassandraKeyspace = CASSANDRA_KEYSPACE.toStringWithoutRoot();
         String hbaseTable = HBASE_TABLE.toStringWithoutRoot();
@@ -142,7 +144,7 @@ public class JanusConfiguredGraphFactory {
             map.put(hbaseTable, graphName);
         }
         if ((StandardStoreManager.getAllBerkeleyShorthands().contains(backend)) && (!map.containsKey(storageDir))) {
-            map.put(storageDir, (String) map.get(storageRoot) + graphName);
+            map.put(storageDir, (String) map.get(storageRoot) + "/" + graphName);
         }
         return map;
     }

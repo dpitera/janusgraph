@@ -111,9 +111,9 @@ public class GraphDatabaseConfiguration {
             ConfigOption.Type.FIXED, false);
 
     public static final ConfigOption<String> GRAPH_NAME = new ConfigOption<String>(GRAPH_NS, "graphname",
-            "This config option is a mandatory configuration setting that you must supply when opening a graph. " +
-            "This String value you provide will be the name of your graph, and you use this name to access JVM's " +
-            "reference to this graph object.",
+            "This config option is an optional configuration setting that you may supply when opening a graph. " +
+            "This String value you provide will be the name of your graph. If you use the ConfigurationManagament APIs, " +
+            "then you will be able to access your graph by this String representation using the JanusConfiguredGraphFactory APIs.",
             ConfigOption.Type.LOCAL, String.class);
 
     public static final ConfigOption<TimestampProviders> TIMESTAMP_PROVIDER = new ConfigOption<TimestampProviders>(GRAPH_NS, "timestamps",
