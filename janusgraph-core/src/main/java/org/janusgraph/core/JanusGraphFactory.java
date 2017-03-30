@@ -141,16 +141,6 @@ public class JanusGraphFactory {
         }
     }
 
-    /**
-     * Closes a {@link JanusGraph} graph by supplying {@link String} graphName.
-     *
-     * @param configuration Graph
-     * @return JanusGraph
-     */
-    public static JanusGraph close(String graphName) throws InterruptedException {
-        return (JanusGraph) JanusGraphManager.getInstance().removeGraph(graphName);
-    }
-
     /** 
      * Closes a {@link JanusGraph} graph
      * 

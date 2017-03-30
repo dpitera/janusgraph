@@ -29,20 +29,9 @@ import org.janusgraph.diskstorage.StandardStoreManager;
 import org.apache.commons.configuration.MapConfiguration;
 
 import java.util.Map;
+import java.util.List;
 
 public class JanusConfiguredGraphFactory {
-    private static ConfigOption<String> CASSANDRA_CONFIG = GraphDatabaseConfiguration.CASSANDRA_KEYSPACE;
-    private static String CASSANDRA_KEYSPACE = CASSANDRA_CONFIG.toStringWithoutRoot();
-    
-    private static ConfigOption<String> HBASE_CONFIG = GraphDatabaseConfiguration.HBASE_TABLE;
-    private static String HBASE_TABLE = HBASE_CONFIG.toStringWithoutRoot();
-    
-    private static ConfigOption<String> DIR_CONFIG = GraphDatabaseConfiguration.STORAGE_DIRECTORY;
-    private static String STORAGE_DIRECTORY = DIR_CONFIG.toStringWithoutRoot();
-    
-    private static ConfigOption<String> ROOT_CONFIG = GraphDatabaseConfiguration.STORAGE_ROOT;
-    private static String STORAGE_ROOT = ROOT_CONFIG.toStringWithoutRoot(); 
-    
     /**
      * Creates a {@link JanusGraph} configuration stored in {@ConfigurationGraphManagament}
      * configurationGraph and a {@link JanusGraph} graph reference according to the single
@@ -52,69 +41,108 @@ public class JanusConfiguredGraphFactory {
      * backend's respective keyspace/table/storage_directory parameter, we set the keyspace/table
      * to the {@link String} supplied graphName or we append the graphName to the supplied
      * storage_root parameter.
+     *
      * @param String graphName
-     * 
+     *
      * @return JanusGraph
      */
     public static JanusGraph create(final String graphName) {
-        return (JanusGraph) JanusGraphManager.getInstance().openGraph(graphName, (String gName) -> {
-            ConfigurationGraphManagement configGraphManagement = null;
-            try {
-                configGraphManagement= ConfigurationGraphManagement.getInstance();
-            } catch(ConfigurationGraphManagementNotEnabled e) {
-                throw new RuntimeException(e);  
+        ConfigurationGraphManagement configGraphManagement = null;
+        try {
+            configGraphManagement= ConfigurationGraphManagement.getInstance();
+        } catch(ConfigurationGraphManagementNotEnabled e) {
+            throw new RuntimeException(e);
+        }
+        Map<String, Object> graphConfigMap = configGraphManagement.getConfiguration(graphName);
+        if (null != graphConfigMap) throw new RuntimeException(String.format("Configuration for graph %s already exists.", graphName));
+        Map<String, Object> templateConfigMap = configGraphManagement.getTemplateConfiguration();
+        if (null == templateConfigMap) throw new RuntimeException("Please create a template Configuration using the ConfigurationGraphManagement API.");
+
+        templateConfigMap.put(ConfigurationGraphManagement.PROPERTY_GRAPH_NAME, graphName);
+
+        // Vertex property values are deserialized as Lists, so let's unserialize the response
+        templateConfigMap.forEach((key, value) -> {
+            if (value instanceof List) {
+                templateConfigMap.put(key, ((List) value).get(0));
             }
-            Map<String, Object> graphConfigMap = configGraphManagement.getConfiguration(gName);
-            if (null != graphConfigMap) throw new RuntimeException(String.format("Configuration for graph %s already exists.", graphName));
-            Map<String, Object> templateConfigMap = configGraphManagement.getTemplateConfiguration();
-            if (null == templateConfigMap) throw new RuntimeException("Please create a template Configuration using the ConfigurationGraphManagement API.");
-            
-            templateConfigMap.put(ConfigurationGraphManagement.PROPERTY_GRAPH_NAME, gName);
-            configGraphManagement.createConfiguration(new MapConfiguration(templateConfigMap));
-
-            //if there is no keyspace or table or storage_directory, add here
-            Map<String, Object> updatedMap = mutateMapBasedOnBackendAndGraphName(templateConfigMap, gName);
-
-            return new StandardJanusGraph(new GraphDatabaseConfiguration(new CommonsConfiguration(new MapConfiguration(updatedMap))));
         });
+
+        configGraphManagement.createConfiguration(new MapConfiguration(templateConfigMap));
+
+        // If there is no keyspace or table or storage_directory, add here
+        Map<String, Object> updatedMap = mutateMapBasedOnBackendAndGraphName(templateConfigMap, graphName);
+        JanusGraph g;
+        try {
+            g = (JanusGraph) JanusGraphManager.getInstance().openGraph(graphName, (String gName) -> {
+                return new StandardJanusGraph(new GraphDatabaseConfiguration(new CommonsConfiguration(new MapConfiguration(updatedMap))));
+            });
+        } catch (Exception e) {
+            configGraphManagement.removeConfiguration(graphName);
+            throw new RuntimeException(e);
+        }
+        return g;
     }
 
     /**
-     * Open a {@link JanusGraph} using a previously created Configuration using the {@link
-     * ConfigurationGraphManagement} API; if a corresponding configuration does not exist, we throw
+     * Open a {@link JanusGraph} using a previously created Configuration using the
+     * {@link ConfigurationGraphManagement} API; if a corresponding configuration does not exist, we throw
      * a {@link RuntimeException}, else return the Graph;
+     *
      * NOTE: If you configuration corresponding to this graph does not contain information about
      * the backend's keyspace/table/storage directory, then we set the keyspace/table to the
      * graphName or set the storage directory to the storage_root + /graphName.
      */
     public static JanusGraph open(String graphName) {
-        return (JanusGraph) JanusGraphManager.getInstance().openGraph(graphName, (String gName) -> {
-            ConfigurationGraphManagement configGraphManagement = null;
-            try {
-                configGraphManagement = ConfigurationGraphManagement.getInstance();
-            } catch (ConfigurationGraphManagementNotEnabled e) {
-                throw new RuntimeException(e);
+        ConfigurationGraphManagement configGraphManagement = null;
+        try {
+            configGraphManagement = ConfigurationGraphManagement.getInstance();
+        } catch (ConfigurationGraphManagementNotEnabled e) {
+            throw new RuntimeException(e);
+        }
+        Map<String, Object> graphConfigMap = configGraphManagement.getConfiguration(graphName);
+        if (null == graphConfigMap) throw new RuntimeException("Please create configuration for this graph using the ConfigurationGraphManagement API.");
+
+        // Vertex property values are deserialized as Lists, so let's unserialize the response
+        graphConfigMap.forEach((key, value) -> {
+            if (value instanceof List) {
+                graphConfigMap.put(key, ((List) value).get(0));
             }
-            Map<String, Object> graphConfigMap = configGraphManagement.getConfiguration(gName);
-            if (null == graphConfigMap) throw new RuntimeException("Please create configuration for this graph using the ConfigurationGraphManagement API.");
-            
-            // if there is no keyspace or table or storage_directory, add here
-            Map<String, Object> updatedMap = mutateMapBasedOnBackendAndGraphName(graphConfigMap, gName);
-  
+        });
+
+        // if there is no keyspace or table or storage_directory, add here
+        Map<String, Object> updatedMap = mutateMapBasedOnBackendAndGraphName(graphConfigMap, graphName);
+        return (JanusGraph) JanusGraphManager.getInstance().openGraph(graphName, (String gName) -> {
             return new StandardJanusGraph(new GraphDatabaseConfiguration(new CommonsConfiguration(new MapConfiguration(updatedMap))));
-        }); 
+        });
+    }
+
+    /**
+     * Closes a {@link JanusGraph} graph by supplying {@link String} graphName
+     * and removes the graph from the {@link JanusGraphManager} {@link Map<String, Graph}
+     * graph reference tracker.
+     *
+     * @param configuration Graph
+     * @return JanusGraph
+     */
+    public static JanusGraph close(String graphName) throws InterruptedException {
+        return (JanusGraph) JanusGraphManager.getInstance().removeGraph(graphName);
     }
 
     private static Map<String, Object> mutateMapBasedOnBackendAndGraphName(final Map<String, Object> map, final String graphName) {
-        String backend = (String) map.get(STORAGE_BACKEND);
-        if ((StandardStoreManager.getAllCassandraShorthands().contains(backend)) && (!map.containsKey(CASSANDRA_KEYSPACE))) {
-            map.put(CASSANDRA_KEYSPACE, graphName);
+        String backend = (String) map.get(STORAGE_BACKEND.toStringWithoutRoot());
+        String cassandraKeyspace = CASSANDRA_KEYSPACE.toStringWithoutRoot();
+        String hbaseTable = HBASE_TABLE.toStringWithoutRoot();
+        String storageDir = STORAGE_DIRECTORY.toStringWithoutRoot();
+        String storageRoot = STORAGE_ROOT.toStringWithoutRoot();
+
+        if ((StandardStoreManager.getAllCassandraShorthands().contains(backend)) && (!map.containsKey(cassandraKeyspace))) {
+            map.put(cassandraKeyspace, graphName);
         }
-        if ((StandardStoreManager.getAllHbaseShorthands().contains(backend)) && (!map.containsKey(HBASE_TABLE))) {
-            map.put(HBASE_TABLE, graphName);
+        if ((StandardStoreManager.getAllHbaseShorthands().contains(backend)) && (!map.containsKey(hbaseTable))) {
+            map.put(hbaseTable, graphName);
         }
-        if ((StandardStoreManager.getAllBerkeleyShorthands().contains(backend)) && (!map.containsKey(STORAGE_DIRECTORY))) {
-            map.put(STORAGE_DIRECTORY, (String) map.get(STORAGE_ROOT) + graphName);
+        if ((StandardStoreManager.getAllBerkeleyShorthands().contains(backend)) && (!map.containsKey(storageDir))) {
+            map.put(storageDir, (String) map.get(storageRoot) + graphName);
         }
         return map;
     }

@@ -163,7 +163,7 @@ public class JanusGraphManager implements GraphManager {
                     if (graphOpenLock.getAvailable()) {
                         graphOpenLock.inc();
                     } else {
-                        throw new RuntimeException("Graph %s has been deleted.".format(gName));
+                        throw new RuntimeException(String.format("Graph %s has been deleted.", gName));
                     }
                 } else {
                     GraphLock newLock = new GraphLock();
@@ -173,23 +173,32 @@ public class JanusGraphManager implements GraphManager {
                 }
             }
 
+            Exception ex = null;
             synchronized (graphOpenLock) {
                 graph = graphs.get(gName);
                 if (graph == null) {
-                    Graph newGraph = thunk.apply(gName);
-                    graph = newGraph;
-                    graphs.put(gName, graph);
+                    Graph newGraph = null;
+                    try {
+                        newGraph = thunk.apply(gName);
+                        graph = newGraph;
+                        graphs.put(gName, graph);
+                    } catch (Exception e) {
+                        ex = e;
+                    }
                 }
             }
 
             synchronized (graphOpenLockMap) {
                 graphOpenLock.dec();
                 if ((graphOpenLock.getRefs() == 1) && (!graphOpenLock.getAvailable())) {
-                    notify();
+                    graphOpenLockMap.notifyAll();
                 }
                 if (graphOpenLock.getRefs() == 0) {
                     graphOpenLockMap.remove(gName);
                 }
+            }
+            if (ex != null) {
+                throw new RuntimeException(ex);
             }
             return graph;
         }
@@ -212,23 +221,19 @@ public class JanusGraphManager implements GraphManager {
                 graphOpenLock = newLock;
             }
             // Wait until the final reference counter is held by the deleter 
-            wait();
+            if (graphOpenLock.getRefs() > 1) {
+                graphOpenLockMap.wait();
+            }
         }
+        graphOpenLock.dec();
+        graphOpenLock.setAvailable(true);
+        graphOpenLockMap.remove(gName);
         
         // Graph has been marked as unavailable, and we are final thread holding a referene
         // so there is no need for thread-safe deletions or lock cleanup.
         Graph graph = graphs.remove(gName);
-        if (null == graph) return null;
-        try {
-            ConfigurationGraphManagement.getInstance().removeConfiguration(gName);
-        } catch (ConfigurationGraphManagementNotEnabled e) {
-            // Do nothing because the server has not been enabled to use the
-            // ConfigurationGraphManagement capabilities 
-        }
-        ((StandardJanusGraph) graph).close();
-
-        graphOpenLock.dec();
-        graphOpenLockMap.remove(gName);
+        if (null != graph) ((StandardJanusGraph) graph).close();
+        
         return graph;
     }
 
