@@ -32,6 +32,8 @@ import org.apache.commons.configuration.MapConfiguration;
 
 import java.util.Map;
 import java.util.HashMap;
+import java.io.IOException;
+import java.io.File;
 import org.junit.Test;
 import org.junit.Ignore;
 import org.junit.After;
@@ -273,6 +275,22 @@ public class JanusConfiguredGraphFactoryTest {
             JanusConfiguredGraphFactory.close("graph1");
             JanusConfiguredGraphFactory.close("graph2");
         }
+    }
+
+    @Test
+    public void fileToMapConfigurationShouldReturnAllProperties() throws IOException {
+        File file = new File(getClass().getClassLoader().getResource("org/janusgraph/core/janusgraph-testing.properties").getFile());
+        String propertiesFileLocation = file.getAbsolutePath();
+        MapConfiguration config = JanusConfiguredGraphFactory.fileToMapConfiguration(propertiesFileLocation);
+
+        assertNotNull(config);
+
+        Map<String, Object> map = config.getMap();
+
+        assertNotNull(map);
+        assertEquals(map.keySet().size(), 2);
+        assertEquals(map.get("storage.backend"), "inmemory");
+        assertEquals(map.get("graph.graphname"), "testgraph");
     }
 }
 

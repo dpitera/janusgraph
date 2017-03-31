@@ -31,6 +31,11 @@ import org.apache.commons.configuration.MapConfiguration;
 
 import java.util.Map;
 import java.util.List;
+import java.util.Properties;
+import java.util.HashMap;
+import java.io.IOException;
+import java.io.File;
+import java.io.FileInputStream;
 
 public class JanusConfiguredGraphFactory {
     /**
@@ -159,6 +164,24 @@ public class JanusConfiguredGraphFactory {
             map.put(storageDir, (String) map.get(storageRoot) + "/" + graphName);
         }
         return map;
+    }
+    
+    /**
+     * Returns a {@link MapConfiguration} corresponding to supplied .properties file
+     * which lives at the supplied {@link String} fileLocation.
+     *
+     * @param {@link String} properties file location
+     *
+     * @return MapConfiguration
+     */
+    public static MapConfiguration fileToMapConfiguration(final String fileLocation) throws IOException {
+        Properties properties = new Properties();
+        properties.load(new FileInputStream(new File(fileLocation)));
+        Map<String, Object> map = new HashMap<String, Object>();
+        properties.entrySet().stream().forEach(entry -> {
+            map.put((String) entry.getKey(), entry.getValue());
+        });
+        return new MapConfiguration(map);
     }
 }
 
