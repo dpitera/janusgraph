@@ -30,6 +30,10 @@ import org.janusgraph.graphdb.database.StandardJanusGraph;
 import org.janusgraph.graphdb.configuration.GraphDatabaseConfiguration;
 import org.janusgraph.diskstorage.configuration.ConfigNamespace;
 import org.janusgraph.diskstorage.configuration.ConfigOption;
+import org.janusgraph.diskstorage.BackendException;
+import org.janusgraph.diskstorage.Backend;
+import org.janusgraph.diskstorage.indexing.IndexProvider;
+import org.janusgraph.diskstorage.indexing.IndexInformation;
 
 import static org.janusgraph.graphdb.configuration.GraphDatabaseConfiguration.*;
 
@@ -165,7 +169,17 @@ public class JanusGraphFactory {
     public static JanusGraph closeAndClear(Graph graph) throws Exception {
         Graph g = JanusGraphManager.getInstance().removeGraph(((StandardJanusGraph) graph).getGraphName(), true);
         if (g == null) { //this graph reference is not being tracked by JanusGraphManager reference tracker
-            ((StandardJanusGraph) graph).getBackend().clearStorage();
+            Backend backend = ((StandardJanusGraph) graph).getBackend();
+            backend.clearStorage();
+            // Close indexProviders
+            Map<String, IndexInformation> indexes = backend.getIndexInformation();
+            indexes.keySet().stream().forEach(key -> {
+                try {
+                    ((IndexProvider) indexes.get(key)).clearStorage();
+                } catch (BackendException e) {
+                    throw new RuntimeException(e);
+                }
+            });
             graph.close();
             return (JanusGraph) graph;
         }

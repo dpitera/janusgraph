@@ -27,6 +27,9 @@ import org.janusgraph.diskstorage.configuration.BasicConfiguration;
 import org.janusgraph.graphdb.management.ConfigurationGraphManagement;
 import org.janusgraph.graphdb.management.utils.ConfigurationGraphManagementNotEnabled;
 import org.janusgraph.diskstorage.BackendException;
+import org.janusgraph.diskstorage.Backend;
+import org.janusgraph.diskstorage.indexing.IndexProvider;
+import org.janusgraph.diskstorage.indexing.IndexInformation;
 import static org.janusgraph.graphdb.configuration.GraphDatabaseConfiguration.ROOT_NS;
 import static org.janusgraph.graphdb.configuration.GraphDatabaseConfiguration.STORAGE_BACKEND;
 import static org.janusgraph.graphdb.configuration.GraphDatabaseConfiguration.GRAPH_NAME;
@@ -35,6 +38,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.HashMap;
 import java.util.function.Function;
 import java.util.Set;
+import java.util.Map;
 
 import javax.script.SimpleBindings;
 import javax.script.Bindings;
@@ -238,7 +242,19 @@ public class JanusGraphManager implements GraphManager {
         // so there is no need for thread-safe deletions or lock cleanup.
         Graph graph = graphs.remove(gName);
         if (null != graph) {
-            if (clearStorage) ((StandardJanusGraph) graph).getBackend().clearStorage();
+            if (clearStorage) {
+                Backend backend = ((StandardJanusGraph) graph).getBackend();
+                backend.clearStorage();
+                // Clear indexProviders
+                Map<String, IndexInformation> indexes = backend.getIndexInformation();
+                indexes.keySet().stream().forEach(key -> {
+                    try {
+                        ((IndexProvider) indexes.get(key)).clearStorage();
+                    } catch (BackendException e) {
+                        throw new RuntimeException(e);
+                    }
+               });
+            }
             ((StandardJanusGraph) graph).close();
         }
         return graph;
