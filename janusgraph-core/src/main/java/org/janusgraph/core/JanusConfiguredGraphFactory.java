@@ -20,6 +20,7 @@ import org.janusgraph.graphdb.database.StandardJanusGraph;
 import org.janusgraph.graphdb.configuration.GraphDatabaseConfiguration;
 import org.janusgraph.diskstorage.configuration.backend.CommonsConfiguration;
 import org.janusgraph.diskstorage.configuration.ConfigOption;
+import org.janusgraph.diskstorage.BackendException;
 import static org.janusgraph.graphdb.configuration.GraphDatabaseConfiguration.*;
 import static org.janusgraph.graphdb.management.JanusGraphManager.*;
 import static org.janusgraph.graphdb.management.ConfigurationGraphManagement.*;
@@ -124,12 +125,23 @@ public class JanusConfiguredGraphFactory {
      * @param configuration Graph
      * @return JanusGraph
      */
-    public static JanusGraph close(String graphName) throws InterruptedException {
+    public static JanusGraph close(String graphName) throws InterruptedException, BackendException {
         return (JanusGraph) JanusGraphManager.getInstance().removeGraph(graphName);
     }
-    
-     
-    // Exposed for unit Testing 
+
+    /**
+     * Closes a {@link JanusGraph} graph by supplying {@link String} graphName
+     * and removes the graph from the {@link JanusGraphManager} {@link Map<String, Graph}
+     * graph reference tracker and also clears the Backend's storage.
+     *
+     * @param configuration Graph
+     * @return JanusGraph
+     */
+    public static JanusGraph closeAndClear(String graphName) throws InterruptedException, BackendException {
+        return (JanusGraph) JanusGraphManager.getInstance().removeGraph(graphName, true);
+    }
+
+    // Exposed for unit Testing
     protected static Map<String, Object> mutateMapBasedOnBackendAndGraphName(final Map<String, Object> map, final String graphName) {
         String backend = (String) map.get(STORAGE_BACKEND.toStringWithoutRoot());
         String cassandraKeyspace = CASSANDRA_KEYSPACE.toStringWithoutRoot();

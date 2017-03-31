@@ -141,15 +141,31 @@ public class JanusGraphFactory {
         }
     }
 
-    /** 
+    /**
      * Closes a {@link JanusGraph} graph
-     * 
+     *
      * @param configuration Graph
      * @return JanusGraph
      */
     public static JanusGraph close(Graph graph) throws Exception {
         Graph g = JanusGraphManager.getInstance().removeGraph(((StandardJanusGraph) graph).getGraphName());
         if (g == null) { //this graph reference is not being tracked by JanusGraphManager reference tracker
+            graph.close();
+            return (JanusGraph) graph;
+        }
+        return (JanusGraph) g;
+    }
+
+    /**
+     * Closes a {@link JanusGraph} graph and clears storage
+     *
+     * @param configuration Graph
+     * @return JanusGraph
+     */
+    public static JanusGraph closeAndClear(Graph graph) throws Exception {
+        Graph g = JanusGraphManager.getInstance().removeGraph(((StandardJanusGraph) graph).getGraphName(), true);
+        if (g == null) { //this graph reference is not being tracked by JanusGraphManager reference tracker
+            ((StandardJanusGraph) graph).getBackend().clearStorage();
             graph.close();
             return (JanusGraph) graph;
         }

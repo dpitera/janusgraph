@@ -22,6 +22,7 @@ import org.janusgraph.core.JanusGraphFactory;
 import org.janusgraph.diskstorage.configuration.backend.CommonsConfiguration;
 import org.janusgraph.graphdb.database.StandardJanusGraph;
 import org.janusgraph.graphdb.configuration.GraphDatabaseConfiguration;
+import org.janusgraph.diskstorage.BackendException;
 import static org.janusgraph.graphdb.configuration.GraphDatabaseConfiguration.*;
 import static org.janusgraph.graphdb.configuration.GraphDatabaseConfiguration.GRAPH_NAME;
 import static org.janusgraph.graphdb.management.ConfigurationGraphManagement.*;
@@ -60,12 +61,12 @@ public class JanusConfiguredGraphFactoryTest {
     }
 
     @Test
-    public void shouldOpenGraphUsingConfiguration() throws InterruptedException {
+    public void shouldOpenGraphUsingConfiguration() throws InterruptedException, BackendException {
         try {
             Map<String, Object> map = new HashMap<String, Object>();
             map.put(STORAGE_BACKEND.toStringWithoutRoot(), "inmemory");
             map.put(GRAPH_NAME.toStringWithoutRoot(), "graph1");
-            configGraphManagement.createConfiguration(new MapConfiguration(map)); 
+            configGraphManagement.createConfiguration(new MapConfiguration(map));
             StandardJanusGraph graph = (StandardJanusGraph) JanusConfiguredGraphFactory.open("graph1");
             assertNotNull(graph);
         } finally {
@@ -73,13 +74,13 @@ public class JanusConfiguredGraphFactoryTest {
             JanusConfiguredGraphFactory.close("graph1");
         }
     }
-    
+
     @Test
-    public void shouldCreateAndGetGraphUsingTemplateConfiguration() throws InterruptedException {
+    public void shouldCreateAndGetGraphUsingTemplateConfiguration() throws InterruptedException, BackendException {
         try {
             Map<String, Object> map = new HashMap<String, Object>();
             map.put(STORAGE_BACKEND.toStringWithoutRoot(), "inmemory");
-            configGraphManagement.createTemplateConfiguration(new MapConfiguration(map)); 
+            configGraphManagement.createTemplateConfiguration(new MapConfiguration(map));
             StandardJanusGraph graph = (StandardJanusGraph) JanusConfiguredGraphFactory.create("graph1");
             StandardJanusGraph graph1 = (StandardJanusGraph) JanusConfiguredGraphFactory.open("graph1");
 
@@ -101,7 +102,7 @@ public class JanusConfiguredGraphFactoryTest {
         }
         assertTrue(errorThrown);
     }
-    
+
     @Test
     public void shouldThrowTemplateConfigurationDoesNotExistError() {
         boolean errorThrown = false;
@@ -112,54 +113,54 @@ public class JanusConfiguredGraphFactoryTest {
         }
         assertTrue(errorThrown);
     }
-  
+
     @Test
-    public void storageDirectoryShouldBeStorageRootPlusGraphName() throws InterruptedException {
+    public void storageDirectoryShouldBeStorageRootPlusGraphName() throws InterruptedException, BackendException {
         Map<String, Object> map = new HashMap<String, Object>();
         map.put(STORAGE_BACKEND.toStringWithoutRoot(), "berkeleyje");
         map.put(STORAGE_ROOT.toStringWithoutRoot(), "./tmp");
         map.put(GRAPH_NAME.toStringWithoutRoot(), "graph1");
 
         Map<String, Object> updatedMap = JanusConfiguredGraphFactory.mutateMapBasedOnBackendAndGraphName(map, "graph1");
-        
+
         assertNotNull(updatedMap);
         assertTrue(updatedMap.containsKey(STORAGE_DIRECTORY.toStringWithoutRoot()));
         assertEquals((String) updatedMap.get(STORAGE_DIRECTORY.toStringWithoutRoot()), "./tmp/graph1");
     }
 
     @Test
-    public void hbaseTableShouldEqualGraphName() throws InterruptedException {
+    public void hbaseTableShouldEqualGraphName() throws InterruptedException, BackendException {
         Map<String, Object> map = new HashMap<String, Object>();
         map.put(STORAGE_BACKEND.toStringWithoutRoot(), "hbase");
         map.put(GRAPH_NAME.toStringWithoutRoot(), "graph1");
-        
+
         Map<String, Object> updatedMap = JanusConfiguredGraphFactory.mutateMapBasedOnBackendAndGraphName(map, "graph1");
-        
+
         assertNotNull(updatedMap);
         assertTrue(updatedMap.containsKey(HBASE_TABLE.toStringWithoutRoot()));
         assertEquals((String) updatedMap.get(HBASE_TABLE.toStringWithoutRoot()), "graph1");
     }
 
     @Test
-    public void cassandraKeyspaceShouldEqualGraphName() throws InterruptedException {
+    public void cassandraKeyspaceShouldEqualGraphName() throws InterruptedException, BackendException {
         Map<String, Object> map = new HashMap<String, Object>();
         map.put(STORAGE_BACKEND.toStringWithoutRoot(), "cassandra");
         map.put(GRAPH_NAME.toStringWithoutRoot(), "graph1");
-        
+
         Map<String, Object> updatedMap = JanusConfiguredGraphFactory.mutateMapBasedOnBackendAndGraphName(map, "graph1");
-        
+
         assertNotNull(updatedMap);
         assertTrue(updatedMap.containsKey(CASSANDRA_KEYSPACE.toStringWithoutRoot()));
         assertEquals((String) updatedMap.get(CASSANDRA_KEYSPACE.toStringWithoutRoot()), "graph1");
     }
 
     @Test
-    public void cassandraKeyspaceShouldEqualSuppliedName() throws InterruptedException {
+    public void cassandraKeyspaceShouldEqualSuppliedName() throws InterruptedException, BackendException {
         Map<String, Object> map = new HashMap<String, Object>();
         map.put(STORAGE_BACKEND.toStringWithoutRoot(), "cassandra");
         map.put(CASSANDRA_KEYSPACE.toStringWithoutRoot(), "randomKeyspace");
         map.put(GRAPH_NAME.toStringWithoutRoot(), "graph1");
-    
+
         Map<String, Object> updatedMap = JanusConfiguredGraphFactory.mutateMapBasedOnBackendAndGraphName(map, "graph1");
 
         assertNotNull(updatedMap);
@@ -174,7 +175,7 @@ public class JanusConfiguredGraphFactoryTest {
         Map<String, Object> map = new HashMap<String, Object>();
         map.put(STORAGE_BACKEND.toStringWithoutRoot(), "inmemory");
         map.put(GRAPH_NAME.toStringWithoutRoot(), "graph1");
-        configGraphManagement.createConfiguration(new MapConfiguration(map)); 
+        configGraphManagement.createConfiguration(new MapConfiguration(map));
         configGraphManagement.removeConfiguration("graph1");
         try {
             JanusConfiguredGraphFactory.open("graph1");
@@ -188,57 +189,57 @@ public class JanusConfiguredGraphFactoryTest {
     @Test
     public void shouldFailToCreateGraphAfterRemoveTemplateConfiguration() {
         boolean errorThrown = false;
-        
+
         Map<String, Object> map = new HashMap<String, Object>();
         map.put(STORAGE_BACKEND.toStringWithoutRoot(), "inmemory");
-        configGraphManagement.createTemplateConfiguration(new MapConfiguration(map)); 
+        configGraphManagement.createTemplateConfiguration(new MapConfiguration(map));
         configGraphManagement.removeTemplateConfiguration();
         try {
             JanusConfiguredGraphFactory.create("graph1");
         } catch (RuntimeException e) {
             errorThrown = true;
         }
-        
+
         assertTrue(errorThrown);
     }
-    
+
     @Test
     public void shouldFailToOpenGraphAfterRemoveConfiguration() {
         boolean errorThrown = false;
-        
+
         Map<String, Object> map = new HashMap<String, Object>();
         map.put(STORAGE_BACKEND.toStringWithoutRoot(), "inmemory");
         map.put(GRAPH_NAME.toStringWithoutRoot(), "graph1");
-        configGraphManagement.createConfiguration(new MapConfiguration(map)); 
+        configGraphManagement.createConfiguration(new MapConfiguration(map));
         configGraphManagement.removeConfiguration("graph1");
         try {
             JanusConfiguredGraphFactory.create("graph1");
         } catch (RuntimeException e) {
             errorThrown = true;
         }
-        
+
         assertTrue(errorThrown);
     }
 
     @Test
-    public void updateConfigurationShouldOnlyUpdateForGraphAfterWeCloseAndReOpen() throws InterruptedException {
+    public void updateConfigurationShouldOnlyUpdateForGraphAfterWeCloseAndReOpen() throws InterruptedException, BackendException {
         try {
             boolean errorThrown = false;
             Map<String, Object> map = new HashMap<String, Object>();
             map.put(STORAGE_BACKEND.toStringWithoutRoot(), "inmemory");
             map.put(GRAPH_NAME.toStringWithoutRoot(), "graph1");
-            configGraphManagement.createConfiguration(new MapConfiguration(map)); 
+            configGraphManagement.createConfiguration(new MapConfiguration(map));
             StandardJanusGraph graph = (StandardJanusGraph) JanusConfiguredGraphFactory.open("graph1");
             assertNotNull(graph);
 
             map.put(STORAGE_BACKEND.toStringWithoutRoot(), "bogusBackend");
             configGraphManagement.updateConfiguration("graph1", new MapConfiguration(map));
-            
+
             StandardJanusGraph graph1 = (StandardJanusGraph) JanusConfiguredGraphFactory.open("graph1");
             assertNotNull(graph);
 
             JanusConfiguredGraphFactory.close("graph1");
-            
+
             try {
                 StandardJanusGraph graph2 = (StandardJanusGraph) JanusConfiguredGraphFactory.open("graph1");
             } catch (Exception e) {
@@ -254,18 +255,18 @@ public class JanusConfiguredGraphFactoryTest {
     }
 
     @Test
-    public void shouldCreateTwoGraphsUsingSameTemplateConfiguration() throws InterruptedException {
+    public void shouldCreateTwoGraphsUsingSameTemplateConfiguration() throws InterruptedException, BackendException {
         try {Map<String, Object> map = new HashMap<String, Object>();
             map.put(STORAGE_BACKEND.toStringWithoutRoot(), "inmemory");
-            configGraphManagement.createTemplateConfiguration(new MapConfiguration(map)); 
+            configGraphManagement.createTemplateConfiguration(new MapConfiguration(map));
             StandardJanusGraph graph1 = (StandardJanusGraph) JanusConfiguredGraphFactory.create("graph1");
             StandardJanusGraph graph2 = (StandardJanusGraph) JanusConfiguredGraphFactory.create("graph2");
 
             assertNotNull(graph1);
             assertNotNull(graph2);
 
-            assertEquals(graph1.getConfiguration().getConfiguration().get(GRAPH_NAME), "graph1");        
-            assertEquals(graph2.getConfiguration().getConfiguration().get(GRAPH_NAME), "graph2");        
+            assertEquals(graph1.getConfiguration().getConfiguration().get(GRAPH_NAME), "graph1");
+            assertEquals(graph2.getConfiguration().getConfiguration().get(GRAPH_NAME), "graph2");
         } finally {
             configGraphManagement.removeConfiguration("graph1");
             configGraphManagement.removeConfiguration("graph2");

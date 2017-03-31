@@ -26,6 +26,7 @@ import org.janusgraph.diskstorage.configuration.ReadConfiguration;
 import org.janusgraph.diskstorage.configuration.BasicConfiguration;
 import org.janusgraph.graphdb.management.ConfigurationGraphManagement;
 import org.janusgraph.graphdb.management.utils.ConfigurationGraphManagementNotEnabled;
+import org.janusgraph.diskstorage.BackendException;
 import static org.janusgraph.graphdb.configuration.GraphDatabaseConfiguration.ROOT_NS;
 import static org.janusgraph.graphdb.configuration.GraphDatabaseConfiguration.STORAGE_BACKEND;
 import static org.janusgraph.graphdb.configuration.GraphDatabaseConfiguration.GRAPH_NAME;
@@ -51,7 +52,7 @@ public class JanusGraphManager implements GraphManager {
         if (null != this.instance) {
             throw new RuntimeException("You may not instantiate a JanusGraphManager. The single instance should be handled by Tinkerpop's GremlinServer startup processes.");
         }
-        
+
         this.settings = settings;
         this.instance = this;
         // Open graphs defined at server start in settings.graphs
@@ -62,14 +63,14 @@ public class JanusGraphManager implements GraphManager {
                 new ConfigurationGraphManagement(graph);
             }
         });
-        
+
     }
 
     public static JanusGraphManager getInstance() {
         return instance;
     }
 
-    /** 
+    /**
      * @Deprecated
      */
     @Deprecated
@@ -204,7 +205,11 @@ public class JanusGraphManager implements GraphManager {
         }
     }
 
-    public Graph removeGraph(String gName) throws InterruptedException {
+    public Graph removeGraph(String gName) throws InterruptedException, BackendException {
+        return removeGraph(gName, false);
+    }
+
+    public Graph removeGraph(String gName, boolean clearStorage) throws InterruptedException, BackendException {
         if (gName == null) return null;
 
         GraphLock graphOpenLock = null;
@@ -220,7 +225,7 @@ public class JanusGraphManager implements GraphManager {
                 graphOpenLockMap.put(gName, newLock);
                 graphOpenLock = newLock;
             }
-            // Wait until the final reference counter is held by the deleter 
+            // Wait until the final reference counter is held by the deleter
             if (graphOpenLock.getRefs() > 1) {
                 graphOpenLockMap.wait();
             }
@@ -228,12 +233,14 @@ public class JanusGraphManager implements GraphManager {
         graphOpenLock.dec();
         graphOpenLock.setAvailable(true);
         graphOpenLockMap.remove(gName);
-        
+
         // Graph has been marked as unavailable, and we are final thread holding a referene
         // so there is no need for thread-safe deletions or lock cleanup.
         Graph graph = graphs.remove(gName);
-        if (null != graph) ((StandardJanusGraph) graph).close();
-        
+        if (null != graph) {
+            if (clearStorage) ((StandardJanusGraph) graph).getBackend().clearStorage();
+            ((StandardJanusGraph) graph).close();
+        }
         return graph;
     }
 
