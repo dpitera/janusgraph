@@ -20,6 +20,8 @@ import org.junit.Test;
 
 import org.janusgraph.core.JanusGraphFactory;
 import org.janusgraph.core.JanusGraph;
+import org.janusgraph.graphdb.management.JanusGraphManager;
+import org.apache.tinkerpop.gremlin.server.Settings;
 import org.apache.tinkerpop.gremlin.structure.Graph;
 
 import static junit.framework.TestCase.assertTrue;
@@ -29,7 +31,11 @@ public class TinkerpopFeaturesTest
 {
 
     private JanusGraph graph;
+    private static JanusGraphManager gm;
 
+    static {
+        gm = new JanusGraphManager(new Settings());
+    }
     @Before
     public void setupGraph()
     {

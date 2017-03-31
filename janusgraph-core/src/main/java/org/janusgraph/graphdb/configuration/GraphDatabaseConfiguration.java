@@ -110,6 +110,12 @@ public class GraphDatabaseConfiguration {
             "of JanusGraph's advanced features which can lead to inconsistent data. EXPERT FEATURE - USE WITH GREAT CARE.",
             ConfigOption.Type.FIXED, false);
 
+    public static final ConfigOption<String> GRAPH_NAME = new ConfigOption<String>(GRAPH_NS, "graphname",
+            "This config option is an optional configuration setting that you may supply when opening a graph. " +
+            "This String value you provide will be the name of your graph. If you use the ConfigurationManagament APIs, " +
+            "then you will be able to access your graph by this String representation using the JanusConfiguredGraphFactory APIs.",
+            ConfigOption.Type.LOCAL, String.class);
+
     public static final ConfigOption<TimestampProviders> TIMESTAMP_PROVIDER = new ConfigOption<TimestampProviders>(GRAPH_NS, "timestamps",
             "The timestamp resolution to use when writing to storage and indices. Sets the time granularity for the " +
             "entire graph cluster. To avoid potential inaccuracies, the configured time resolution should match " +
@@ -393,10 +399,17 @@ public class GraphDatabaseConfiguration {
     public static final ConfigNamespace STORAGE_NS = new ConfigNamespace(ROOT_NS,"storage","Configuration options for the storage backend.  Some options are applicable only for certain backends.");
 
     /**
+     * Storage root directory for those storage backends that require local storage
+     */
+    public static final ConfigOption<String> STORAGE_ROOT = new ConfigOption<String>(STORAGE_NS,"root",
+            "Storage root directory for those storage backends that require local storage",
+            ConfigOption.Type.LOCAL, String.class);
+
+    /**
      * Storage directory for those storage backends that require local storage
      */
     public static final ConfigOption<String> STORAGE_DIRECTORY = new ConfigOption<String>(STORAGE_NS,"directory",
-            "Storage directory for those storage backends that require local storage",
+            "Storage directory for those storage backends that require local storage. Defaults to <STORAGE_ROOT>/janusgraph.",
             ConfigOption.Type.LOCAL, String.class);
 //    public static final String STORAGE_DIRECTORY_KEY = "directory";
 
@@ -1242,6 +1255,7 @@ public class GraphDatabaseConfiguration {
 //    public static final String GANGLIA_SPOOF_KEY = "spoof";
 //    public static final String GANGLIA_SPOOF_DEFAULT = null;
 
+
     /**
      * The configuration namespace within {@link #METRICS_NS} for
      * Graphite.
@@ -1300,6 +1314,36 @@ public class GraphDatabaseConfiguration {
 
     public static final ConfigOption<String> GREMLIN_GRAPH = new ConfigOption<String>(GREMLIN_NS, "graph",
             "The implementation of graph factory that will be used by gremlin server", ConfigOption.Type.LOCAL, "org.janusgraph.core.JanusGraphFactory");
+
+
+    // CASSANDRA SPECIFIC CONFIG OPTIONS
+    // Placing here so they can be used in janusgraph-core as well as janusgraph-cassandra projects
+    public static final ConfigNamespace CASSANDRA_NS =
+            new ConfigNamespace(GraphDatabaseConfiguration.STORAGE_NS, "cassandra", "Cassandra storage backend options");
+
+    public static final ConfigOption<String> CASSANDRA_KEYSPACE =
+            new ConfigOption<String>(CASSANDRA_NS, "keyspace",
+                    "The name of JanusGraph's keyspace.  It will be created if it does not exist.",
+                    ConfigOption.Type.LOCAL, "janusgraph");
+
+    // HBASE SPECIFIC CONFIG OPTIONS
+    // Placing here so they can be used in janusgraph-core as well as janusgraph-hbase projects
+    public static final ConfigNamespace HBASE_NS =
+        new ConfigNamespace(GraphDatabaseConfiguration.STORAGE_NS, "hbase", "HBase storage options");
+    public static final ConfigOption<Boolean> SKIP_SCHEMA_CHECK =
+        new ConfigOption<Boolean>(HBASE_NS, "skip-schema-check",
+        "Assume that JanusGraph's HBase table and column families already exist. " +
+        "When this is true, JanusGraph will not check for the existence of its table/CFs, " +
+        "nor will it attempt to create them under any circumstances.  This is useful " +
+        "when running JanusGraph without HBase admin privileges.",
+        ConfigOption.Type.MASKABLE, false);
+
+    public static final ConfigOption<String> HBASE_TABLE =
+        new ConfigOption<String>(HBASE_NS, "table",
+        "The name of the table JanusGraph will use.  When " + ConfigElement.getPath(SKIP_SCHEMA_CHECK) +
+        " is false, JanusGraph will automatically create this table if it does not already exist.",
+        ConfigOption.Type.LOCAL, "janusgraph");
+
 
     // ################ Begin Class Definition #######################
     // ###############################################################
@@ -1841,6 +1885,10 @@ public class GraphDatabaseConfiguration {
         backend.initialize(configuration);
         storeFeatures = backend.getStoreFeatures();
         return backend;
+    }
+
+    public String getGraphName() {
+        return getConfigurationAtOpen().getString(GRAPH_NAME.toString());
     }
 
     public StoreFeatures getStoreFeatures() {

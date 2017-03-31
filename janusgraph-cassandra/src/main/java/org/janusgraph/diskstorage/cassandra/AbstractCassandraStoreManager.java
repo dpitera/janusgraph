@@ -60,14 +60,9 @@ public abstract class AbstractCassandraStoreManager extends DistributedStoreMana
 
     //################### CASSANDRA SPECIFIC CONFIGURATION OPTIONS ######################
 
-    public static final ConfigNamespace CASSANDRA_NS =
-            new ConfigNamespace(GraphDatabaseConfiguration.STORAGE_NS, "cassandra", "Cassandra storage backend options");
+    public static final ConfigNamespace CASSANDRA_NS = GraphDatabaseConfiguration.CASSANDRA_NS;
 
-    public static final ConfigOption<String> CASSANDRA_KEYSPACE =
-            new ConfigOption<String>(CASSANDRA_NS, "keyspace",
-                    "The name of JanusGraph's keyspace.  It will be created if it does not exist.",
-                    ConfigOption.Type.LOCAL, "janusgraph");
-
+    public static final ConfigOption<String> CASSANDRA_KEYSPACE = GraphDatabaseConfiguration.CASSANDRA_KEYSPACE;
     // Consistency Levels and Atomic Batch
     public static final ConfigOption<String> CASSANDRA_READ_CONSISTENCY =
             new ConfigOption<String>(CASSANDRA_NS, "read-consistency-level",

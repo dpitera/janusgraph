@@ -34,11 +34,13 @@ import org.janusgraph.graphdb.database.StandardJanusGraph;
 import org.janusgraph.graphdb.internal.Order;
 import org.janusgraph.graphdb.types.StandardEdgeLabelMaker;
 import org.janusgraph.testutil.TestGraphConfigs;
+import org.janusgraph.graphdb.management.JanusGraphManager;
 
 import org.apache.tinkerpop.gremlin.structure.T;
 import org.apache.tinkerpop.gremlin.structure.Edge;
 import org.apache.tinkerpop.gremlin.structure.Element;
 import org.apache.tinkerpop.gremlin.structure.Vertex;
+import org.apache.tinkerpop.gremlin.server.Settings;
 import org.junit.After;
 import org.junit.Before;
 
@@ -66,10 +68,15 @@ public abstract class JanusGraphBaseTest {
     public StoreFeatures features;
     public JanusGraphTransaction tx;
     public JanusGraphManagement mgmt;
+    private static JanusGraphManager graphManager;
 
     public Map<String,LogManager> logManagers;
 
     public JanusGraphBaseTest() {
+    }
+
+    static {
+        graphManager = new JanusGraphManager(new Settings());
     }
 
     public abstract WriteConfiguration getConfiguration();

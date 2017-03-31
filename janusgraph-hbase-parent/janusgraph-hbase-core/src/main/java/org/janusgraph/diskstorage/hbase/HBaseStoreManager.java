@@ -20,7 +20,7 @@ import static org.janusgraph.diskstorage.Backend.INDEXSTORE_NAME;
 import static org.janusgraph.diskstorage.Backend.LOCK_STORE_SUFFIX;
 import static org.janusgraph.diskstorage.Backend.SYSTEM_MGMT_LOG_NAME;
 import static org.janusgraph.diskstorage.Backend.SYSTEM_TX_LOG_NAME;
-import static org.janusgraph.graphdb.configuration.GraphDatabaseConfiguration.SYSTEM_PROPERTIES_STORE_NAME;
+import static org.janusgraph.graphdb.configuration.GraphDatabaseConfiguration.*;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -100,8 +100,7 @@ public class HBaseStoreManager extends DistributedStoreManager implements KeyCol
 
     private static final Logger logger = LoggerFactory.getLogger(HBaseStoreManager.class);
 
-    public static final ConfigNamespace HBASE_NS =
-            new ConfigNamespace(GraphDatabaseConfiguration.STORAGE_NS, "hbase", "HBase storage options");
+    public static final ConfigNamespace HBASE_NS = GraphDatabaseConfiguration.HBASE_NS;
 
     public static final ConfigOption<Boolean> SHORT_CF_NAMES =
             new ConfigOption<Boolean>(HBASE_NS, "short-cf-names",
@@ -117,19 +116,9 @@ public class HBaseStoreManager extends DistributedStoreManager implements KeyCol
             "and configure new compression algorithms on the HBase cluster by itself.",
             ConfigOption.Type.MASKABLE, "GZ");
 
-    public static final ConfigOption<Boolean> SKIP_SCHEMA_CHECK =
-            new ConfigOption<Boolean>(HBASE_NS, "skip-schema-check",
-            "Assume that JanusGraph's HBase table and column families already exist. " +
-            "When this is true, JanusGraph will not check for the existence of its table/CFs, " +
-            "nor will it attempt to create them under any circumstances.  This is useful " +
-            "when running JanusGraph without HBase admin privileges.",
-            ConfigOption.Type.MASKABLE, false);
+    public static final ConfigOption<Boolean> SKIP_SCHEMA_CHECK = GraphDatabaseConfiguration.SKIP_SCHEMA_CHECK;
 
-    public static final ConfigOption<String> HBASE_TABLE =
-            new ConfigOption<String>(HBASE_NS, "table",
-            "The name of the table JanusGraph will use.  When " + ConfigElement.getPath(SKIP_SCHEMA_CHECK) +
-            " is false, JanusGraph will automatically create this table if it does not already exist.",
-            ConfigOption.Type.LOCAL, "janusgraph");
+    public static final ConfigOption<String> HBASE_TABLE = GraphDatabaseConfiguration.HBASE_TABLE;
 
     /**
      * Related bug fixed in 0.98.0, 0.94.7, 0.95.0:

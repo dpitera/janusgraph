@@ -19,14 +19,21 @@ import org.janusgraph.core.Multiplicity;
 import org.janusgraph.core.JanusGraphEdge;
 import org.janusgraph.core.JanusGraphVertex;
 import org.janusgraph.core.schema.JanusGraphManagement;
+import org.janusgraph.graphdb.management.JanusGraphManager;
 import org.janusgraph.graphdb.database.StandardJanusGraph;
+import org.apache.tinkerpop.gremlin.server.Settings;
 import org.junit.Test;
+import org.junit.BeforeClass;
 
 /**
  * @author Matthias Broecheler (me@matthiasb.com)
  */
 public class EdgeSerializerTest {
 
+    private static JanusGraphManager gm;
+    static {
+        gm = new JanusGraphManager(new Settings());
+    }
 
     @Test
     public void testValueOrdering() {
