@@ -69,3 +69,9 @@ script:
 notifications:
   email:
     - cjquinon@us.ibm.com
+  # Notify us of integration build failures only
+  slack: 
+    rooms:
+        - 'compose:UwF0sO1h8oZL3ARHvX19hndE#graphdb'
+    on_pull_requests: false
+    on_success: never
