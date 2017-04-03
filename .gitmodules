@@ -1,0 +1,3 @@
+[submodule "apache-tinkerpop"]
+	path = apache-tinkerpop
+	url = git@github.ibm.com:ibmgraph/tinkerpop.git
