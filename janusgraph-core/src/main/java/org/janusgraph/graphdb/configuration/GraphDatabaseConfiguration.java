@@ -110,6 +110,12 @@ public class GraphDatabaseConfiguration {
             "of JanusGraph's advanced features which can lead to inconsistent data. EXPERT FEATURE - USE WITH GREAT CARE.",
             ConfigOption.Type.FIXED, false);
 
+    public static final ConfigOption<String> GRAPH_NAME = new ConfigOption<String>(GRAPH_NS, "graphname",
+            "This config option is an optional configuration setting that you may supply when opening a graph. " +
+            "The String value you provide will be the name of your graph. If you use the ConfigurationManagament APIs, " +
+            "then you will be able to access your graph by this String representation using the JanusConfiguredGraphFactory APIs.",
+            ConfigOption.Type.LOCAL, String.class);
+
     public static final ConfigOption<TimestampProviders> TIMESTAMP_PROVIDER = new ConfigOption<TimestampProviders>(GRAPH_NS, "timestamps",
             "The timestamp resolution to use when writing to storage and indices. Sets the time granularity for the " +
             "entire graph cluster. To avoid potential inaccuracies, the configured time resolution should match " +
@@ -1841,6 +1847,10 @@ public class GraphDatabaseConfiguration {
         backend.initialize(configuration);
         storeFeatures = backend.getStoreFeatures();
         return backend;
+    }
+
+    public String getGraphName() {
+        return getConfigurationAtOpen().getString(GRAPH_NAME.toString());
     }
 
     public StoreFeatures getStoreFeatures() {
