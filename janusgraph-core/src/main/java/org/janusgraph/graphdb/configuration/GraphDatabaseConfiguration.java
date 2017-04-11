@@ -399,10 +399,19 @@ public class GraphDatabaseConfiguration {
     public static final ConfigNamespace STORAGE_NS = new ConfigNamespace(ROOT_NS,"storage","Configuration options for the storage backend.  Some options are applicable only for certain backends.");
 
     /**
+     * Storage root directory for those storage backends that require local storage
+     */
+    public static final ConfigOption<String> STORAGE_ROOT = new ConfigOption<String>(STORAGE_NS,"root",
+            "Storage root directory for those storage backends that require local storage. " +
+            "If you do not supply storage.directory and you do supply graph.graphname, then your data " +
+            "will be stored in the directory equivalent to <STORAGE_ROOT>/<GRAPH_NAME>.",
+            ConfigOption.Type.LOCAL, String.class);
+
+    /**
      * Storage directory for those storage backends that require local storage
      */
     public static final ConfigOption<String> STORAGE_DIRECTORY = new ConfigOption<String>(STORAGE_NS,"directory",
-            "Storage directory for those storage backends that require local storage",
+            "Storage directory for those storage backends that require local storage.",
             ConfigOption.Type.LOCAL, String.class);
 //    public static final String STORAGE_DIRECTORY_KEY = "directory";
 
@@ -1257,6 +1266,7 @@ public class GraphDatabaseConfiguration {
     });
 //    public static final String GANGLIA_SPOOF_KEY = "spoof";
 //    public static final String GANGLIA_SPOOF_DEFAULT = null;
+
 
     /**
      * The configuration namespace within {@link #METRICS_NS} for
