@@ -1593,7 +1593,7 @@ public abstract class JanusGraphTest extends JanusGraphBaseTest {
         tx.addVertex("name", "v3");
         tx.commit();
 
-        Thread.sleep(2000); //Wait for the index to register in graph2
+        Thread.sleep(2000 + additionalLatency()); //Wait for the index to register in graph2
         finishSchema();
         try {
             mgmt.updateIndex(mgmt.getGraphIndex("theIndex"), SchemaAction.ENABLE_INDEX);
@@ -1620,7 +1620,7 @@ public abstract class JanusGraphTest extends JanusGraphBaseTest {
         evaluateQuery(tx.query().has("name", "v3"), ElementCategory.VERTEX, 1, new boolean[]{true, true}, "theIndex");
         evaluateQuery(tx.query().has("name", "v4"), ElementCategory.VERTEX, 1, new boolean[]{true, true}, "theIndex");
 
-        Thread.sleep(2000);
+        Thread.sleep(2000 + additionalLatency());
         tx2 = graph2.newTransaction();
         evaluateQuery(tx2.query().has("name", "v1"), ElementCategory.VERTEX, 0, new boolean[]{true, true}, "theIndex");
         evaluateQuery(tx2.query().has("name", "v2"), ElementCategory.VERTEX, 1, new boolean[]{true, true}, "theIndex");
@@ -3675,7 +3675,7 @@ public abstract class JanusGraphTest extends JanusGraphBaseTest {
                 userLogMsgCounter.incrementAndGet();
             }
         });
-        Thread.sleep(4000);
+        Thread.sleep(4000 + additionalLatency());
         assertEquals(5, txMsgCounter.get(LogTxStatus.PRECOMMIT).get());
         assertEquals(4, txMsgCounter.get(LogTxStatus.PRIMARY_SUCCESS).get());
         assertEquals(1, txMsgCounter.get(LogTxStatus.COMPLETE_SUCCESS).get());
@@ -3814,7 +3814,7 @@ public abstract class JanusGraphTest extends JanusGraphBaseTest {
                 }).build();
 
         //wait
-        Thread.sleep(22000L);
+        Thread.sleep(22000L + additionalLatency());
 
         recovery.shutdown();
         long[] recoveryStats = ((StandardTransactionLogProcessor) recovery).getStatistics();
@@ -4661,7 +4661,7 @@ public abstract class JanusGraphTest extends JanusGraphBaseTest {
         assertNotEmpty(v2.query().direction(Direction.OUT).vertices());
         assertNotEmpty(v3.query().direction(Direction.OUT).vertices());
 
-        Thread.sleep(commitTime + (ttl1 * 1000L + 200) - System.currentTimeMillis());
+        Thread.sleep(commitTime + (ttl1 * 1000L + 200 + additionalLatency()) - System.currentTimeMillis());
         graph.tx().rollback();
 
         // e1 has dropped out
@@ -4669,7 +4669,7 @@ public abstract class JanusGraphTest extends JanusGraphBaseTest {
         assertNotEmpty(v2.query().direction(Direction.OUT).vertices());
         assertNotEmpty(v3.query().direction(Direction.OUT).vertices());
 
-        Thread.sleep(commitTime + (ttl2 * 1000L + 500) - System.currentTimeMillis());
+        Thread.sleep(commitTime + (ttl2 * 1000L + 500 + additionalLatency()) - System.currentTimeMillis());
         graph.tx().rollback();
 
         // both e1 and e2 have dropped out.  e3 has no TTL, and so remains
@@ -4696,7 +4696,7 @@ public abstract class JanusGraphTest extends JanusGraphBaseTest {
         // pre-commit state of the edge.  It is not yet subject to TTL
         assertNotEmpty(v1.query().direction(Direction.OUT).vertices());
 
-        Thread.sleep(1001);
+        Thread.sleep(1001 + additionalLatency());
 
         // the edge should have expired by now, but only if it had been committed
         assertNotEmpty(v1.query().direction(Direction.OUT).vertices());
@@ -4706,7 +4706,7 @@ public abstract class JanusGraphTest extends JanusGraphBaseTest {
         // still here, because we have just committed the edge.  Its countdown starts at the commit
         assertNotEmpty(v1.query().direction(Direction.OUT).vertices());
 
-        Thread.sleep(1001);
+        Thread.sleep(1001 + additionalLatency());
 
         // the edge has expired in Cassandra, but still appears alive in this transaction
         assertNotEmpty(v1.query().direction(Direction.OUT).vertices());
@@ -4747,7 +4747,7 @@ public abstract class JanusGraphTest extends JanusGraphBaseTest {
         assertNotEmpty(v1.query().direction(Direction.OUT).edges());
         assertNotEmpty(graph.query().has("time", 42).edges());
 
-        Thread.sleep(commitTime + (ttl * 1000L + 100) - System.currentTimeMillis());
+        Thread.sleep(commitTime + (ttl * 1000L + 100 + additionalLatency()) - System.currentTimeMillis());
         graph.tx().rollback();
 
         assertFalse(v1.query().direction(Direction.OUT).interval("time", 0, 100).edges().iterator().hasNext());
@@ -4785,7 +4785,7 @@ public abstract class JanusGraphTest extends JanusGraphBaseTest {
         assertNotEmpty(graph.query().has("name", "some event").has("place", "somewhere").vertices());
         assertNotEmpty(graph.query().has("name", "some event").vertices());
 
-        Thread.sleep(1001);
+        Thread.sleep(1001 + additionalLatency());
         graph.tx().rollback();
 
         // short-lived property expires first
@@ -4794,7 +4794,7 @@ public abstract class JanusGraphTest extends JanusGraphBaseTest {
         assertEmpty(graph.query().has("name", "some event").has("place", "somewhere").vertices());
         assertNotEmpty(graph.query().has("name", "some event").vertices());
 
-        Thread.sleep(1001);
+        Thread.sleep(1001 + additionalLatency());
         graph.tx().rollback();
 
         // vertex expires before defined TTL of the long-lived property
@@ -4829,7 +4829,7 @@ public abstract class JanusGraphTest extends JanusGraphBaseTest {
         assertNotNull(v1);
         assertNotEmpty(graph.query().has("name", "some event").vertices());
 
-        Thread.sleep(1001);
+        Thread.sleep(1001 + additionalLatency());
         graph.tx().rollback();
 
         v1 = getV(graph, id);
@@ -4890,7 +4890,7 @@ public abstract class JanusGraphTest extends JanusGraphBaseTest {
         assertNotEmpty(v2.query().direction(Direction.IN).labels("dislikes").edges());
         assertNotEmpty(v2.query().direction(Direction.IN).labels("indifferentTo").edges());
 
-        Thread.sleep(commitTime + 1001L - System.currentTimeMillis());
+        Thread.sleep(commitTime + 1501L + additionalLatency() - System.currentTimeMillis());
         graph.tx().rollback();
 
         v1 = getV(graph, v1Id);
@@ -4909,7 +4909,7 @@ public abstract class JanusGraphTest extends JanusGraphBaseTest {
         assertEmpty(v2.query().direction(Direction.IN).labels("dislikes").edges());
         assertNotEmpty(v2.query().direction(Direction.IN).labels("indifferentTo").edges());
 
-        Thread.sleep(commitTime + 2001L - System.currentTimeMillis());
+        Thread.sleep(commitTime + 2501L + additionalLatency() - System.currentTimeMillis());
         graph.tx().rollback();
 
         v1 = getV(graph, v1Id);
@@ -4969,7 +4969,7 @@ public abstract class JanusGraphTest extends JanusGraphBaseTest {
         graph.tx().commit();
 
         // Let the edge die
-        Thread.sleep((long) Math.ceil(initialTTLMillis * 1.25));
+        Thread.sleep((long) Math.ceil((initialTTLMillis + additionalLatency()) * 1.25));
 
         // Edge should be gone
         assertEquals(2, Iterators.size(graph.vertices()));
@@ -4981,7 +4981,7 @@ public abstract class JanusGraphTest extends JanusGraphBaseTest {
         mgmt.setTTL(mgmt.getEdgeLabel("likes"), Duration.ZERO);
         mgmt.commit();
 
-        Thread.sleep(1L);
+        Thread.sleep(1L + additionalLatency());
 
         // Check that the edge is still gone, add a new edge
         assertEquals(2, Iterators.size(graph.vertices()));
@@ -4992,7 +4992,7 @@ public abstract class JanusGraphTest extends JanusGraphBaseTest {
         graph.tx().commit();
 
         // Sleep past when it would have expired under the original config
-        Thread.sleep((long) Math.ceil(initialTTLMillis * 1.25));
+        Thread.sleep((long) Math.ceil((initialTTLMillis + additionalLatency()) * 1.25));
 
         // Edge must not be dead
         assertEquals(4, Iterators.size(graph.vertices()));
@@ -5090,7 +5090,7 @@ public abstract class JanusGraphTest extends JanusGraphBaseTest {
         assertEquals(Duration.ofDays(1), d);
 
         // returned value of ^ttl is the total time to live since commit, not remaining time
-        Thread.sleep(1001);
+        Thread.sleep(1001 + additionalLatency());
         graph.tx().rollback();
         e1 = Iterables.<JanusGraphEdge>getOnlyElement(v1.query().direction(Direction.OUT).labels("likes").edges());
         d = e1.value("~ttl");
@@ -5137,5 +5137,9 @@ public abstract class JanusGraphTest extends JanusGraphBaseTest {
         assertEquals(Duration.ofSeconds(1), d);
         d = v2.value("~ttl");
         assertEquals(Duration.ZERO, d);
+    }
+
+    public long additionalLatency() {
+        return 0L;
     }
 }
