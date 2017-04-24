@@ -13,6 +13,8 @@ branches:
     - "master"
 
 env:
+  global:
+    - COMPOSE_RELEASE='1.0.0'
   matrix:
     - MODULE='apache-tinkerpop' ARGS='-DskipTests=true'
     - MODULE='janusgraph-berkeleyje'
@@ -64,6 +66,18 @@ addons:
 script:
   - mvn install -DskipTests=true -B -pl ${MODULE} -am
   - mvn verify -pl ${MODULE} ${ARGS}
+
+# Create a tar file only if we're releasing
+before_deploy:
+  - mkdir release
+  - tar -cvzf release/janusgraph_ibm_{COMPOSE_RELEASE}.tgz bin conf lib
+deploy:
+  provider: s3
+  access_key_id: 'AKIAJNO3BSVBBC7DMC5Q'
+  secret_access_key:
+    secure: l9EFiHc/JohTCLqtkGCcupLeWV1Hihg45pLibivM9C11NeoSCM0MdhvVNiDIUpJvdHUwEMKQeEjqh5n/TEj8y/VlsLdFSG/U9JdYewpDow5EyhIeYZDpp0zwfjrxIPftdPx7dho/haIPKdzCps1TAYQOZYDkvaVLL/Fej2G2sHT0Ejtrtwrt4aTyVwQGTvsCBffR87rFRg6Z9suY60vR/isexsBs7LziVD4nNUgoWJeKGEhhHYr57xpnnKyZ6T9QBAbrmOe0TdGsgH6r0T1NLfd9cScS8ShxVEUDE4bBrc4+Jlk7t48mFJU7+WtMaqaiLKGJ/UF0sEbJnhg5dkL944APHjG5dQu1FCifUGj5oepBJ+9S5hDwoYEboeSGCD1DPtO19VvZcSYXn+tRCs0/m3seTujJg7/ciy26qRts50lf9LPtOp9J3dT07hVRGYMSzWXf+PHSo3QICJYeF7sw4DAgZKJa2qhksFUL73NZjMWWTER2rMkwFZbJoRT86EjfoZt1lgYkQLbBAQop25ByhYs0GTlnP6n1Qrm5J5mrQlhhm9/QKEV/qm4MM0t40FSG1KcKnpsdRIx42GNRPeBkYcXPhO6LSzecXYiEe13Y7WZ6ARzhXI5EMWqIR7PjlmwOaTBet3pgc28TTdBoPV2kDTtCpXBm3w5D4FxX1Eg8/gY=
+  bucket: 'dblayer-builds'
+  local_dir: release
 
 # Syntax and more info: https://docs.travis-ci.com/user/notifications
 notifications:
