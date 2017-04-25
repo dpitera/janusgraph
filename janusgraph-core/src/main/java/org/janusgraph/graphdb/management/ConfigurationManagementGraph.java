@@ -81,9 +81,9 @@ public class ConfigurationManagementGraph {
     public static ConfigurationManagementGraph getInstance() throws ConfigurationManagementGraphNotEnabledException {
         if (null == instance) {
             throw new ConfigurationManagementGraphNotEnabledException(
-                "Please supply a graphs key equivalent to \"JanusConfigurationGraph\" in your " +
-                "YAML file and restart the server to be able to use the functionality of the " +
-                "ConfigurationManagementGraph class."
+                "Please add a key named \"JanusConfigurationGraph\" to the \"graphs\" property " +
+                "in your YAML file and restart the server to be able to use the functionality " +
+                "of the ConfigurationManagementGraph class."
             );
         }
 

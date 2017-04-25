@@ -76,7 +76,6 @@ public class JanusConfiguredGraphFactory {
                 return new StandardJanusGraph(new GraphDatabaseConfiguration(new CommonsConfiguration(new MapConfiguration(templateConfigMap))));
             });
         } catch (Exception e) {
-            configGraphManagement.removeConfiguration(graphName);
             throw new RuntimeException(e);
         }
         configGraphManagement.createConfiguration(new MapConfiguration(templateConfigMap));

@@ -24,6 +24,7 @@ import java.util.Map;
 import org.janusgraph.diskstorage.BackendException;
 import org.janusgraph.diskstorage.configuration.Configuration;
 import org.janusgraph.diskstorage.configuration.ModifiableConfiguration;
+import org.janusgraph.graphdb.configuration.GraphDatabaseConfiguration;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.slf4j.Logger;
@@ -43,6 +44,7 @@ public abstract class AbstractCassandraStoreTest extends KeyColumnValueStoreTest
     private static final String DEFAULT_COMPRESSOR_PACKAGE = "org.apache.cassandra.io.compress";
 
     public abstract ModifiableConfiguration getBaseStorageConfiguration();
+    public abstract ModifiableConfiguration getBaseStorageConfiguration(String keyspace);
 
     public abstract AbstractCassandraStoreManager openStorageManager(Configuration c) throws BackendException;
 
@@ -141,6 +143,21 @@ public abstract class AbstractCassandraStoreTest extends KeyColumnValueStoreTest
     public void testTTLSupported() throws Exception {
         StoreFeatures features = manager.getFeatures();
         assertTrue(features.hasCellTTL());
+    }
+
+    @Test
+    public void keyspaceShouldBeEquivalentToProvidedOne() throws BackendException {
+        ModifiableConfiguration config = getBaseStorageConfiguration("randomNewKeyspace");
+        AbstractCassandraStoreManager mgr = openStorageManager(config);
+        assertEquals("randomNewKeyspace", mgr.keySpaceName);
+    }
+
+    @Test
+    public void keyspaceShouldBeEquivalentToGraphName() throws BackendException {
+        ModifiableConfiguration config = getBaseStorageConfiguration(null);
+        config.set(GraphDatabaseConfiguration.GRAPH_NAME, "randomNewGraphName");
+        AbstractCassandraStoreManager mgr = openStorageManager(config);
+        assertEquals("randomNewGraphName", mgr.keySpaceName);
     }
 
     @Override
