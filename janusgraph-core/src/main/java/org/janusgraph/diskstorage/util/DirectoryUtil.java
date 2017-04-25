@@ -29,8 +29,13 @@ public class DirectoryUtil {
 
 
     public static File getOrCreateDataDirectory(String location) throws BackendException {
-        File storageDir = new File(location);
+        return getOrCreateDataDirectory(location, null);
+    }
 
+    public static File getOrCreateDataDirectory(String location, String childLocation) throws BackendException {
+        File storageDir;
+        if (null != childLocation) storageDir = new File(location, childLocation);
+        else storageDir = new File(location);
         if (storageDir.exists() && storageDir.isFile())
             throw new PermanentBackendException(String.format("%s exists but is a file.", location));
 
