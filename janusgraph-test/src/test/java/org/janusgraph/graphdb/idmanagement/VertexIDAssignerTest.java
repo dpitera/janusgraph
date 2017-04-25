@@ -29,6 +29,8 @@ import org.janusgraph.graphdb.database.idassigner.IDPoolExhaustedException;
 import org.janusgraph.graphdb.database.idassigner.VertexIDAssigner;
 import org.janusgraph.graphdb.internal.InternalRelation;
 import org.janusgraph.graphdb.internal.InternalVertex;
+import org.janusgraph.graphdb.management.JanusGraphManager;
+import org.apache.tinkerpop.gremlin.server.Settings;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -49,7 +51,10 @@ import java.util.List;
 public class VertexIDAssignerTest {
 
     final VertexIDAssigner idAssigner;
-
+    private static JanusGraphManager gm;
+    static {
+        gm = new JanusGraphManager(new Settings());
+    }
 
     @Parameterized.Parameters
     public static Collection<Object[]> configs() {

@@ -16,6 +16,8 @@ package org.janusgraph.graphdb;
 
 import org.janusgraph.core.JanusGraphFactory;
 import org.janusgraph.core.JanusGraph;
+import org.janusgraph.graphdb.management.JanusGraphManager;
+import org.apache.tinkerpop.gremlin.server.Settings;
 import org.junit.Test;
 
 /**
@@ -26,6 +28,11 @@ import org.junit.Test;
  * invocation on the shorthand path (#831).
  */
 public class JanusGraphFactoryShorthandTest {
+
+    private static JanusGraphManager gm;
+    static {
+        gm = new JanusGraphManager(new Settings());
+    }
 
     @Test
     public void testJanusGraphFactoryShorthand() {

@@ -21,6 +21,8 @@ import org.janusgraph.core.JanusGraphVertex;
 import org.janusgraph.graphdb.query.vertex.VertexArrayList;
 import org.janusgraph.graphdb.query.vertex.VertexLongList;
 import org.janusgraph.graphdb.transaction.StandardJanusGraphTx;
+import org.janusgraph.graphdb.management.JanusGraphManager;
+import org.apache.tinkerpop.gremlin.server.Settings;
 import org.junit.Test;
 
 import java.util.Iterator;
@@ -32,6 +34,11 @@ import static org.junit.Assert.*;
  * @author Matthias Broecheler (me@matthiasb.com)
  */
 public class VertexListTest {
+
+    private static JanusGraphManager gm;
+    static {
+        gm = new JanusGraphManager(new Settings());
+    }
 
     @Test
     public void testLists() {
