@@ -73,6 +73,7 @@ addons:
 script:
   - if [[ ${TRAVIS_BRANCH} =~  ${RELEASE_REGEX} ]]; then
       if [ "${MODULE}" == "janusgraph-release" ]; then
+        echo "Creating tar file called janusgraph_ibm_${TRAVIS_BRANCH}.tgz"
         mkdir release;
         tar -cvzf release/janusgraph_ibm_${TRAVIS_BRANCH}.tgz bin conf lib;
       fi;
@@ -91,7 +92,7 @@ deploy:
   local_dir: release
   skip_cleanup: true
   on:
-    condition: ${TRAVIS_BRANCH} =~ ${RELEASE_REGEX}
+    condition: '${TRAVIS_BRANCH} =~ ${RELEASE_REGEX}'
 
 # Syntax and more info: https://docs.travis-ci.com/user/notifications
 notifications:
