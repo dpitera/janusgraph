@@ -9,7 +9,7 @@
     <artifactId>janusgraph-core</artifactId>
     <name>JanusGraph-Core: Core Library for JanusGraph</name>
     <url>http://janusgraph.org</url>
-    
+
     <properties>
         <top.level.basedir>${basedir}/..</top.level.basedir>
     </properties>
@@ -35,6 +35,11 @@
         <dependency>
             <groupId>org.apache.tinkerpop</groupId>
             <artifactId>tinkergraph-gremlin</artifactId>
+            <version>${tinkerpop.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.tinkerpop</groupId>
+            <artifactId>gremlin-server</artifactId>
             <version>${tinkerpop.version}</version>
         </dependency>
         <!-- Utility -->
