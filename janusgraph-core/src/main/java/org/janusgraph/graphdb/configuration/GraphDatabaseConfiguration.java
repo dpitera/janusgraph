@@ -62,6 +62,9 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import javax.annotation.Nullable;
 import javax.management.MBeanServerFactory;
+import com.codahale.metrics.jvm.GarbageCollectorMetricSet;
+import com.codahale.metrics.jvm.MemoryUsageGaugeSet;
+
 
 import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.configuration.*;
@@ -1093,6 +1096,8 @@ public class GraphDatabaseConfiguration {
 //    public static final String METRICS_CSV_DIR_KEY = "csv.dir";
 //    public static final String METRICS_CSV_DIR_DEFAULT = null;
 
+    public static final ConfigNamespace METRICS_JVM_NS = new ConfigNamespace(METRICS_NS,"jvm","Configuration options for enabling JVM metrics");
+    
     public static final ConfigNamespace METRICS_JMX_NS = new ConfigNamespace(METRICS_NS,"jmx","Configuration options for metrics reporting through JMX");
 
     /**
@@ -1100,6 +1105,13 @@ public class GraphDatabaseConfiguration {
      */
     public static final ConfigOption<Boolean> METRICS_JMX_ENABLED = new ConfigOption<Boolean>(METRICS_JMX_NS,"enabled",
             "Whether to report Metrics through a JMX MBean",
+            ConfigOption.Type.MASKABLE, false);
+    
+    /**
+     * Whether to report Metrics through a JMX MBean.
+     */
+    public static final ConfigOption<Boolean> METRICS_JVM_ENABLED = new ConfigOption<Boolean>(METRICS_JVM_NS,"enabled",
+            "Whether to report JVM metrics",
             ConfigOption.Type.MASKABLE, false);
 //    public static final String METRICS_JMX_ENABLED_KEY = "jmx.enabled";
 //    public static final boolean METRICS_JMX_ENABLED_DEFAULT = false;
@@ -1650,6 +1662,7 @@ public class GraphDatabaseConfiguration {
             Preconditions.checkNotNull(metricsPrefix);
         }
 
+        configureJvmMetrics();
         configureMetricsConsoleReporter();
         configureMetricsCsvReporter();
         configureMetricsJmxReporter();
@@ -1658,6 +1671,13 @@ public class GraphDatabaseConfiguration {
         configureMetricsGraphiteReporter();
     }
 
+    private void configureJvmMetrics() {
+    	if (configuration.has(METRICS_JVM_ENABLED)) {
+    		MetricManager.INSTANCE.getRegistry().registerAll(new GarbageCollectorMetricSet());
+    		MetricManager.INSTANCE.getRegistry().registerAll(new MemoryUsageGaugeSet());
+        }
+    }
+    
     private void configureMetricsConsoleReporter() {
         if (configuration.has(METRICS_CONSOLE_INTERVAL)) {
             MetricManager.INSTANCE.addConsoleReporter(configuration.get(METRICS_CONSOLE_INTERVAL));

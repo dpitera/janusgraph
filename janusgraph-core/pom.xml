@@ -54,6 +54,10 @@
         </dependency>
         <dependency>
             <groupId>com.codahale.metrics</groupId>
+            <artifactId>metrics-jvm</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.codahale.metrics</groupId>
             <artifactId>metrics-ganglia</artifactId>
             <exclusions>
                 <!-- LGPL licensed - users will need to install this jar manually -->
