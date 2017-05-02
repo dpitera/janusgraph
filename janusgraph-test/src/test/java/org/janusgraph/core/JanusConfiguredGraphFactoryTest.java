@@ -52,7 +52,9 @@ public class JanusConfiguredGraphFactoryTest {
 
     @After
     public void cleanUp() {
-        configGraphManagement.removeTemplateConfiguration();
+        if (configGraphManagement.getTemplateConfiguration() != null) {
+            configGraphManagement.removeTemplateConfiguration();
+        }
     }
 
     @Test
