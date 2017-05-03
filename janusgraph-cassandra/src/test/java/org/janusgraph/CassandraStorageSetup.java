@@ -137,7 +137,7 @@ public class CassandraStorageSetup {
      */
     public static void startCleanEmbedded(boolean forceLocal) {
         String backend = System.getProperty(CASSANDRA_SEED_SYSPROP);
-        if (!forceLocal && backend == null) {
+        if (forceLocal || backend == null) {
             startCleanEmbedded(getPaths());
         } else {
             log.info("Test will use external backend at: " + backend);
