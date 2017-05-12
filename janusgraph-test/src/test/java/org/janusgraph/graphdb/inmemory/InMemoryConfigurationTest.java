@@ -20,6 +20,8 @@ import org.janusgraph.diskstorage.configuration.ConfigOption;
 import org.janusgraph.diskstorage.configuration.ModifiableConfiguration;
 import org.janusgraph.graphdb.configuration.GraphDatabaseConfiguration;
 import org.janusgraph.graphdb.database.StandardJanusGraph;
+import org.janusgraph.graphdb.management.JanusGraphManager;
+import org.apache.tinkerpop.gremlin.server.Settings;
 import org.junit.After;
 import org.junit.Test;
 import static org.junit.Assert.*;
@@ -30,6 +32,10 @@ import static org.junit.Assert.*;
 public class InMemoryConfigurationTest {
 
     StandardJanusGraph graph;
+    private static JanusGraphManager gm;
+    static {
+        gm = new JanusGraphManager(new Settings());
+    }
 
     public void initialize(ConfigOption option, Object value) {
         ModifiableConfiguration config = GraphDatabaseConfiguration.buildGraphConfiguration();

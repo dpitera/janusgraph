@@ -24,12 +24,11 @@ import org.janusgraph.diskstorage.Backend;
 import org.janusgraph.diskstorage.StandardStoreManager;
 import org.janusgraph.diskstorage.configuration.*;
 import org.janusgraph.diskstorage.configuration.backend.CommonsConfiguration;
+import org.janusgraph.graphdb.management.JanusGraphManager;
 import org.janusgraph.graphdb.configuration.GraphDatabaseConfiguration;
-
 import static org.janusgraph.graphdb.configuration.GraphDatabaseConfiguration.*;
 
 import org.janusgraph.graphdb.database.StandardJanusGraph;
-
 import org.janusgraph.graphdb.log.StandardLogProcessorFramework;
 import org.janusgraph.graphdb.log.StandardTransactionLogProcessor;
 import org.apache.commons.configuration.BaseConfiguration;
@@ -37,6 +36,9 @@ import org.apache.commons.configuration.Configuration;
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.PropertiesConfiguration;
 import org.apache.commons.lang.StringUtils;
+import org.apache.tinkerpop.gremlin.structure.Graph;
+import org.apache.tinkerpop.gremlin.structure.Vertex;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,6 +46,10 @@ import java.io.File;
 import java.time.Instant;
 import java.util.Iterator;
 import java.util.regex.Pattern;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
 
 /**
  * JanusGraphFactory is used to open or instantiate a JanusGraph graph database.
@@ -75,6 +81,10 @@ public class JanusGraphFactory {
         return open(getLocalConfiguration(shortcutOrFile));
     }
 
+    public static JanusGraph open(String shortcutOrFile, String backupName) {
+        return open(getLocalConfiguration(shortcutOrFile), backupName);
+    }
+
     /**
      * Opens a {@link JanusGraph} database configured according to the provided configuration.
      *
@@ -104,7 +114,42 @@ public class JanusGraphFactory {
      * @return JanusGraph graph database
      */
     public static JanusGraph open(ReadConfiguration configuration) {
-        return new StandardJanusGraph(new GraphDatabaseConfiguration(configuration));
+        return open(configuration, null);
+    }
+
+    public static JanusGraph open(ReadConfiguration configuration, String backupName) {
+        ModifiableConfiguration config = new ModifiableConfiguration(ROOT_NS, (WriteConfiguration) configuration, BasicConfiguration.Restriction.NONE);
+        String graphName = backupName;
+        if (config.has(GRAPH_NAME)) graphName = config.get(GRAPH_NAME);
+        if (null != graphName) {
+            return (JanusGraph) JanusGraphManager.getInstance().openGraph(graphName, (gName) -> {
+                return new StandardJanusGraph(new GraphDatabaseConfiguration(configuration));
+            });
+        } else {
+            log.warn("You should supply \"graph.graphname\" in your .properties file configuration if you are opening " +
+                     "a graph that has not already been opened at server start, i.e. it was " +
+                     "defined in your YAML file. This will ensure the graph is tracked by the JanusGraphManager," +
+                     "which will enable autocommit and rollback functionality upon all gremlin script executions." +
+                     "Note that JanusGraphFactory#open(String === shortcut notation) does not support consuming the property" +
+                     "\"graph.graphname\" so these graphs should be accessed dynamically by supplying a .properties file here" +
+                     "or by using the JanusConfiguredGraphFactory.");
+            return new StandardJanusGraph(new GraphDatabaseConfiguration(configuration));
+        }
+    }
+
+    /**
+     * Removes {@link Graph} from {@link JanusGraphManager} graph reference tracker, if exists
+     * there, and returns that Graph; else, return the Graph object passed into the function.
+     *
+     * @param configuration Graph
+     * @return JanusGraph
+     */
+    public static JanusGraph close(Graph graph) throws Exception {
+        Graph g = JanusGraphManager.getInstance().removeGraph(((StandardJanusGraph) graph).getGraphName());
+        if (g == null) { //this graph reference is not being tracked by JanusGraphManager reference tracker
+            return (JanusGraph) graph;
+        }
+        return (JanusGraph) g;
     }
 
     /**

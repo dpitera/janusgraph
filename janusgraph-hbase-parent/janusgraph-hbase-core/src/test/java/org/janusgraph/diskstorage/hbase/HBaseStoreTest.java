@@ -26,6 +26,7 @@ import org.apache.hadoop.hbase.util.VersionInfo;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import static org.junit.Assert.assertEquals;
 
 import java.io.IOException;
 
@@ -44,12 +45,32 @@ public class HBaseStoreTest extends KeyColumnValueStoreTest {
     }
 
     public KeyColumnValueStoreManager openStorageManager() throws BackendException {
-        WriteConfiguration config = HBaseStorageSetup.getHBaseGraphConfiguration();
+        return openStorageManager("");
+    }
+
+    public KeyColumnValueStoreManager openStorageManager(String tableName) throws BackendException {
+        return openStorageManager(tableName, "");
+    }
+
+    public KeyColumnValueStoreManager openStorageManager(String tableName, String graphName) throws BackendException {
+        WriteConfiguration config = HBaseStorageSetup.getHBaseConfiguration(tableName, graphName).getConfiguration();
         return new HBaseStoreManager(new BasicConfiguration(GraphDatabaseConfiguration.ROOT_NS,config, BasicConfiguration.Restriction.NONE));
     }
 
     @Test
     public void testGetKeysWithKeyRange() throws Exception {
         super.testGetKeysWithKeyRange();
+    }
+
+    @Test
+    public void tableShouldEqualSuppliedTableName() throws BackendException {
+        HBaseStoreManager mgr = (HBaseStoreManager) openStorageManager("randomTableName");
+        assertEquals("randomTableName", mgr.getName());
+    }
+
+    @Test
+    public void tableShouldEqualGraphName() throws BackendException {
+        HBaseStoreManager mgr = (HBaseStoreManager) openStorageManager("", "randomGraphName");
+        assertEquals("randomGraphName", mgr.getName());
     }
 }

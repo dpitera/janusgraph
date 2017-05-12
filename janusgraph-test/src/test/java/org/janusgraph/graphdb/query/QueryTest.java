@@ -20,6 +20,8 @@ import org.janusgraph.diskstorage.keycolumnvalue.inmemory.InMemoryStoreManager;
 import org.janusgraph.graphdb.configuration.GraphDatabaseConfiguration;
 import org.janusgraph.graphdb.internal.Order;
 import org.janusgraph.graphdb.internal.OrderList;
+import org.janusgraph.graphdb.management.JanusGraphManager;
+import org.apache.tinkerpop.gremlin.server.Settings;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -33,6 +35,10 @@ public class QueryTest {
 
     private JanusGraph graph;
     private JanusGraphTransaction tx;
+    private static JanusGraphManager gm;
+    static {
+        gm = new JanusGraphManager(new Settings());
+    }
 
     @Before
     public void setup() {

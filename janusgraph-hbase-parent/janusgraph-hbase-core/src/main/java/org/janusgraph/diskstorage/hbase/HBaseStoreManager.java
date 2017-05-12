@@ -21,6 +21,7 @@ import static org.janusgraph.diskstorage.Backend.SYSTEM_MGMT_LOG_NAME;
 import static org.janusgraph.diskstorage.Backend.SYSTEM_TX_LOG_NAME;
 import static org.janusgraph.graphdb.configuration.GraphDatabaseConfiguration.IDS_STORE_NAME;
 import static org.janusgraph.graphdb.configuration.GraphDatabaseConfiguration.SYSTEM_PROPERTIES_STORE_NAME;
+import static org.janusgraph.graphdb.configuration.GraphDatabaseConfiguration.GRAPH_NAME;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -125,7 +126,9 @@ public class HBaseStoreManager extends DistributedStoreManager implements KeyCol
     public static final ConfigOption<String> HBASE_TABLE =
             new ConfigOption<>(HBASE_NS, "table",
             "The name of the table JanusGraph will use.  When " + ConfigElement.getPath(SKIP_SCHEMA_CHECK) +
-            " is false, JanusGraph will automatically create this table if it does not already exist.",
+            " is false, JanusGraph will automatically create this table if it does not already exist." +
+            " If this configuration option is not provided but graph.graphname was, the table will be set" +
+            " to that value.",
             ConfigOption.Type.LOCAL, "janusgraph");
 
     /**
@@ -259,7 +262,7 @@ public class HBaseStoreManager extends DistributedStoreManager implements KeyCol
 
         checkConfigDeprecation(config);
 
-        this.tableName = config.get(HBASE_TABLE);
+        this.tableName = setTableName(config);
         this.compression = config.get(COMPRESSION);
         this.regionCount = config.has(REGION_COUNT) ? config.get(REGION_COUNT) : -1;
         this.regionsPerServer = config.has(REGIONS_PER_SERVER) ? config.get(REGIONS_PER_SERVER) : -1;
@@ -957,5 +960,12 @@ public class HBaseStoreManager extends DistributedStoreManager implements KeyCol
         } catch (IOException e) {
             throw new JanusGraphException(e);
         }
+    }
+
+    private String setTableName(org.janusgraph.diskstorage.configuration.Configuration config) {
+        if ((!config.has(HBASE_TABLE)) && (config.has(GRAPH_NAME))) {
+            return config.get(GRAPH_NAME);
+        }
+        return config.get(HBASE_TABLE);
     }
 }
