@@ -10,7 +10,7 @@ cache:
 
 branches:
   only:
-    - "master"
+    - "ibm-0.1"
     - /[0-9]+.[0-9]+.[0-9]+/
 
 env:
@@ -67,7 +67,7 @@ addons:
 
 # A Release Branch of the form #.#.# will only build a tar file
 # and deploy to S3.  Our process will be such that we'll review
-# the latest integration build on master for test results and
+# the latest integration build for test results and
 # merge nto the release branch. A build will be kicked off to
 # build the tar file.
 script:
