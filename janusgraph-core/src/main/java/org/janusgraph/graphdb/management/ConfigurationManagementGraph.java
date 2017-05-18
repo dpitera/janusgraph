@@ -44,6 +44,7 @@ import java.util.concurrent.ExecutionException;
 public class ConfigurationManagementGraph {
 
     public static final String PROPERTY_GRAPH_NAME = "graph.graphname";
+    public static final String PROPERTY_CREATED_USING_TEMPLATE = "Created_Using_Template";
 
     private static final Logger log = LoggerFactory.getLogger(ConfigurationManagementGraph.class);
     private static ConfigurationManagementGraph instance = null;
@@ -53,6 +54,7 @@ public class ConfigurationManagementGraph {
     private final String graphNameIndex = "Graph_Name_Index";
     private final String propertyTemplate = "Template_Configuration";
     private final String templateIndex = "Template_Index";
+    private final String propertyCreatedUsingTemplateIndex = "Created_Using_Template_Index";
 
     /**
      * This class allows you to create/update/remove configuration objects used to open a {@link Graph};
@@ -69,8 +71,9 @@ public class ConfigurationManagementGraph {
         this.graph = graph;
         instance = this;
 
-        createIndexIfDoesNotExist(graphNameIndex, PROPERTY_GRAPH_NAME, true);
-        createIndexIfDoesNotExist(templateIndex, propertyTemplate, false);
+        createIndexIfDoesNotExist(graphNameIndex, PROPERTY_GRAPH_NAME, String.class, true);
+        createIndexIfDoesNotExist(templateIndex, propertyTemplate, Boolean.class, false);
+        createIndexIfDoesNotExist(propertyCreatedUsingTemplateIndex, PROPERTY_CREATED_USING_TEMPLATE, Boolean.class, false);
     }
 
     /**
@@ -254,11 +257,11 @@ public class ConfigurationManagementGraph {
 
     }
 
-    private void createIndexIfDoesNotExist(String indexName, String propertyKeyName, boolean unique) {
+    private void createIndexIfDoesNotExist(String indexName, String propertyKeyName, Class dataType,boolean unique) {
         graph.tx().rollback();
         JanusGraphManagement mgmt = graph.openManagement();
         if (null == mgmt.getGraphIndex(indexName)) {
-            PropertyKey key = mgmt.makePropertyKey(propertyKeyName).dataType(String.class).make();
+            PropertyKey key = mgmt.makePropertyKey(propertyKeyName).dataType(dataType).make();
 
             JanusGraphIndex index;
             if (unique) index = mgmt.buildIndex(indexName, Vertex.class).addKey(key).unique().buildCompositeIndex();
