@@ -69,6 +69,7 @@ public class JanusConfiguredGraphFactory {
         }
 
         templateConfigMap.put(ConfigurationManagementGraph.PROPERTY_GRAPH_NAME, graphName);
+        templateConfigMap.put(ConfigurationManagementGraph.PROPERTY_CREATED_USING_TEMPLATE, true);
 
         JanusGraph g;
         try {
