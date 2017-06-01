@@ -1295,6 +1295,17 @@ public abstract class JanusGraphTest extends JanusGraphBaseTest {
         assertCount(0, v.query().direction(Direction.IN).labels("knows").edges());
         assertCount(1, v.query().direction(Direction.OUT).labels("know").has("time", 11).edges());
     }
+    
+    @Test
+    public void testGotGLoadWithoutIndexBackendException() {
+        try {
+            GraphOfTheGodsFactory.load(graph);
+            fail("Expected an exception to be thrown indicating improper index backend configuration");
+        } catch (IllegalStateException ex) {
+            assertTrue("An exception asking the user to use loadWithoutMixedIndex was expected",
+                    ex.getMessage().contains("loadWithoutMixedIndex"));
+        }
+    }
 
     @Test
     public void testGotGIndexRemoval() throws InterruptedException, ExecutionException {

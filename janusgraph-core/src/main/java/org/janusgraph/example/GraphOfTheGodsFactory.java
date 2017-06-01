@@ -24,6 +24,7 @@ import org.janusgraph.core.attribute.Geoshape;
 import org.janusgraph.core.schema.ConsistencyModifier;
 import org.janusgraph.core.schema.JanusGraphIndex;
 import org.janusgraph.core.schema.JanusGraphManagement;
+import org.janusgraph.graphdb.database.StandardJanusGraph;
 import org.apache.tinkerpop.gremlin.process.traversal.Order;
 import org.apache.tinkerpop.gremlin.structure.Direction;
 import org.apache.tinkerpop.gremlin.structure.Edge;
@@ -64,6 +65,14 @@ public class GraphOfTheGodsFactory {
     }
 
     public static void load(final JanusGraph graph, String mixedIndexName, boolean uniqueNameCompositeIndex) {
+        if (mixedIndexName != null 
+                && graph instanceof StandardJanusGraph 
+                && ((StandardJanusGraph)graph).getIndexSerializer().containsIndex(mixedIndexName) == false) {
+            String msg = "The indexing backend with name \"%s\" is not defined. Specify an existing index " +
+                         "backend or use GraphOfTheGodsFactory.loadWithoutMixedIndex(graph,true) to load " +
+                         "without the use of an indexing backend.";
+            throw new IllegalStateException(String.format(msg, mixedIndexName));
+        }
 
         //Create Schema
         JanusGraphManagement mgmt = graph.openManagement();
