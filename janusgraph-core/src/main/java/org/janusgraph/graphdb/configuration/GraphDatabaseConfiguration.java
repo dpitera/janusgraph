@@ -1672,9 +1672,13 @@ public class GraphDatabaseConfiguration {
     }
 
     private void configureJvmMetrics() {
-    	if (configuration.has(METRICS_JVM_ENABLED)) {
-    		MetricManager.INSTANCE.getRegistry().registerAll(new GarbageCollectorMetricSet());
-    		MetricManager.INSTANCE.getRegistry().registerAll(new MemoryUsageGaugeSet());
+        if (configuration.has(METRICS_JVM_ENABLED)) {
+            try {
+                MetricManager.INSTANCE.getRegistry().registerAll(new GarbageCollectorMetricSet());
+                MetricManager.INSTANCE.getRegistry().registerAll(new MemoryUsageGaugeSet());
+            } catch (IllegalArgumentException e) {
+                if (!e.getMessage().matches("^A metric named [^\\s]+ already exists")) throw new RuntimeException(e);
+            }
         }
     }
     
