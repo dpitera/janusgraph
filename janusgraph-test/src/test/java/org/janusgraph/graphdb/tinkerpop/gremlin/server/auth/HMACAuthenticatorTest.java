@@ -147,7 +147,7 @@ public class HMACAuthenticatorTest extends EasyMockSupport {
         expect(authenticator.createCredentialGraph(isA(JanusGraph.class))).andReturn(credentialGraph);
         expect(credentialGraph.countUsers()).andReturn(0l);
         expect(credentialGraph.createUser(eq("user"), eq("pass"))).andReturn(null);
-        expect(graph.openManagement()).andReturn(mgmt).times(2); //any times due to calls in the awaitGraphStatus and IndexWatcher.call
+        expect(graph.openManagement()).andReturn(mgmt).times(2);
         expect(graph.tx()).andReturn(tx);
         expect(index.getFieldKeys()).andReturn(pks);
         expect(index.getIndexStatus(eq(pk))).andReturn(SchemaStatus.ENABLED);

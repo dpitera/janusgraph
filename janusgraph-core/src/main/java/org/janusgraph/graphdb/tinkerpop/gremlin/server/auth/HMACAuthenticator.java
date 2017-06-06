@@ -38,7 +38,6 @@ import org.mindrot.BCrypt;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-
 import java.net.InetAddress;
 import java.nio.ByteBuffer;
 import java.util.Map;
@@ -58,7 +57,7 @@ import static org.janusgraph.graphdb.tinkerpop.gremlin.server.handler.HttpHMACAu
  *
  * @author Keith Lohnes lohnesk@gmail.com
  */
-public class HMACAuthenticator implements Authenticator {
+public class HMACAuthenticator extends JanusGraphAbstractAuthenticator {
     private static final Logger logger = LoggerFactory.getLogger(HMACAuthenticator.class);
    /**
     * The location of the configuration file that contains the credentials database.
@@ -92,8 +91,6 @@ public class HMACAuthenticator implements Authenticator {
 
     private static final String AUTH_ERROR = "Username and/or password are incorrect";
 
-    private CredentialGraph credentialGraph = null;
-
     private String hmacAlgo = "HmacSHA256";
 
     private String secret = "secret";
@@ -106,77 +103,30 @@ public class HMACAuthenticator implements Authenticator {
     }
 
     @Override
-    public void setup(final Map<String,Object> config) {
-        logger.info("Initializing authentication with the {}", HMACAuthenticator.class.getName());
-        if (null == config) {
-            throw new IllegalArgumentException(String.format(
-                    "Could not configure a %s - provide a 'config' in the 'authentication' settings",
-                    HMACAuthenticator.class.getName()));
-        }
-
-        if (!config.containsKey(CONFIG_CREDENTIAL_DB)) {
-            throw new IllegalStateException(String.format(
-                    "Credential configuration missing the %s key that points to a graph config file or graph name", CONFIG_CREDENTIAL_DB));
-        }
-
-        if (!config.containsKey(CONFIG_HMAC_SECRET)) {
-            throw new IllegalStateException(String.format("Credential configuration missing the %s key", CONFIG_HMAC_SECRET));
-        }
-
-        secret = config.get(CONFIG_HMAC_SECRET).toString();
-
-        if (config.containsKey(CONFIG_HMAC_ALGO)) {
-            hmacAlgo = config.get(CONFIG_HMAC_ALGO).toString();
-        }
-
-        if (config.containsKey(CONFIG_TOKEN_TIMEOUT)) {
-            timeout = ((Number) config.get(CONFIG_TOKEN_TIMEOUT)).longValue();
-        }
-
-        final JanusGraph graph = openGraph(config.get(CONFIG_CREDENTIAL_DB).toString());
-        credentialGraph = createCredentialGraph(graph);
-
-        graph.tx().rollback();
-        ManagementSystem mgmt = (ManagementSystem) graph.openManagement();
-        if (!mgmt.containsGraphIndex("byUsername")) {
-            final PropertyKey username = mgmt.makePropertyKey(PROPERTY_USERNAME).dataType(String.class).cardinality(Cardinality.SINGLE).make();
-            JanusGraphIndex index = mgmt.buildIndex("byUsername", Vertex.class).addKey(username).unique().buildCompositeIndex();
-            mgmt.commit();
-            if (!index.getIndexStatus(username).equals(SchemaStatus.ENABLED)) {
-                try {
-                    mgmt = (ManagementSystem) graph.openManagement();
-                    mgmt.updateIndex(mgmt.getGraphIndex("byUsername"), SchemaAction.REINDEX);
-                    mgmt.awaitGraphIndexStatus(graph, "byUsername").status(SchemaStatus.ENABLED).call();
-                } catch (InterruptedException rude) {
-                    throw new RuntimeException("Timed out waiting for byUsername index to be created on credential graph", rude);
-                }
-            }
-        }
-
-        if (credentialGraph.countUsers() == 0) {
-            if (!config.containsKey(CONFIG_DEFAULT_USER) || !config.containsKey(CONFIG_DEFAULT_PASSWORD)) {
-                throw new IllegalStateException(String.format("If there are no users in your credential graph both %s and %s must be defined", CONFIG_DEFAULT_USER, CONFIG_DEFAULT_PASSWORD));
-            }
-            credentialGraph.createUser(config.get(CONFIG_DEFAULT_USER).toString(), config.get(CONFIG_DEFAULT_PASSWORD).toString());
-        }
-
-    }
-
-    public JanusGraph openGraph(String conf) {
-        return JanusGraphFactory.open(conf);
-    }
-
-    public CredentialGraph createCredentialGraph(JanusGraph graph) {
-        return new CredentialGraph(graph);
-    }
-
-    @Override
     public SaslNegotiator newSaslNegotiator(final InetAddress remoteAddress) {
         throw new RuntimeException("HMACAuthenticator does not use SASL!");
     }
 
     public SaslNegotiator newSaslNegotiator() {
         throw new RuntimeException("HMACAuthenticator does not use SASL!");
+    }
+
+    public void setup(final Map<String,Object> config) {
+        if (null != config && !config.containsKey(CONFIG_HMAC_SECRET)) {
+            throw new IllegalStateException(String.format("Credential configuration missing the %s key", CONFIG_HMAC_SECRET));
+        }
+
+        if (null != config && config.containsKey(CONFIG_HMAC_ALGO)) {
+            hmacAlgo = config.get(CONFIG_HMAC_ALGO).toString();
+        }
+
+        if (null != config && config.containsKey(CONFIG_TOKEN_TIMEOUT)) {
+            timeout = ((Number) config.get(CONFIG_TOKEN_TIMEOUT)).longValue();
+        }
+
+        super.setup(config);
+
+        secret = config.get(CONFIG_HMAC_SECRET).toString();
     }
 
     @Override
@@ -200,7 +150,7 @@ public class HMACAuthenticator implements Authenticator {
     }
 
     private AuthenticatedUser authenticateUser(final Map<String, String> credentials) throws AuthenticationException {
-        Vertex v = credentialGraph.findUser(credentials.get(PROPERTY_USERNAME));
+        Vertex v = credentialStore.findUser(credentials.get(PROPERTY_USERNAME));
         if (null == v || !BCrypt.checkpw(credentials.get(PROPERTY_PASSWORD), v.value(PROPERTY_PASSWORD))) {
             throw new AuthenticationException(AUTH_ERROR);
         }
@@ -212,7 +162,7 @@ public class HMACAuthenticator implements Authenticator {
         final Map<String, String> tokenMap = parseToken(token);
         final String username = tokenMap.get(PROPERTY_USERNAME);
         final String time = tokenMap.get("time");
-        final String password = credentialGraph.findUser(username).value(PROPERTY_PASSWORD);
+        final String password = credentialStore.findUser(username).value(PROPERTY_PASSWORD);
         final String salt = getBcryptSaltFromStoredPassword(password);
         final String expected = generateToken(username, salt, time);
         final Long timeLong = Long.parseLong(time);
@@ -259,7 +209,7 @@ public class HMACAuthenticator implements Authenticator {
 
     private String getToken(final Map<String, String> credentials) {
         final String username = credentials.get(PROPERTY_USERNAME);
-        final Vertex user = credentialGraph.findUser(username);
+        final Vertex user = credentialStore.findUser(username);
         final String password = user.value(PROPERTY_PASSWORD);
         final String salt = getBcryptSaltFromStoredPassword(password);
         final String time = Long.toString(new Date().getTime());

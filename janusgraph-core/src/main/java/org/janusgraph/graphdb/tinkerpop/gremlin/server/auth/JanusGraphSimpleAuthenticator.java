@@ -34,17 +34,6 @@ import org.mindrot.BCrypt;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-
-import org.janusgraph.core.Cardinality;
-import org.janusgraph.core.JanusGraphFactory;
-import org.janusgraph.core.JanusGraph;
-import org.janusgraph.core.PropertyKey;
-import org.janusgraph.core.schema.JanusGraphIndex;
-import org.janusgraph.core.schema.JanusGraphManagement;
-import org.janusgraph.core.schema.SchemaStatus;
-import org.janusgraph.core.schema.SchemaAction;
-import org.janusgraph.graphdb.database.management.ManagementSystem;
-
 import org.mindrot.BCrypt;
 
 import java.io.IOException;
@@ -62,89 +51,12 @@ import static org.apache.tinkerpop.gremlin.groovy.plugin.dsl.credential.Credenti
  * Management of the credential store can be handled through the {@link CredentialGraph} DSL.
  * A modification of the SimpleAuthenticator from TinkerPop to add some configuration and an index
  * on UserName
- *
- * @author Stephen Mallette (http://stephen.genoprime.com)
  */
-public class JanusGraphSimpleAuthenticator implements Authenticator {
+public class JanusGraphSimpleAuthenticator extends JanusGraphAbstractAuthenticator {
     private static final Logger logger = LoggerFactory.getLogger(JanusGraphSimpleAuthenticator.class);
     private static final byte NUL = 0;
-    private CredentialGraph credentialStore;
-
-    /**
-     * Default username
-     */
-    public static final String CONFIG_DEFAULT_USER = "defaultUsername";
-
-    /**
-     * Default password for default username.
-     */
-    public static final String CONFIG_DEFAULT_PASSWORD = "defaultPassword";
-
-    /**
-     * The location of the configuration file that contains the credentials database.
-     */
-    public static final String CONFIG_CREDENTIAL_DB = "credentialDb";
-
 
     private static final String AUTH_ERROR = "Username and/or password are incorrect";
-
-    @Override
-    public boolean requireAuthentication() {
-        return true;
-    }
-
-    public JanusGraph openGraph(String conf) {
-        return JanusGraphFactory.open(conf);
-    }
-
-    public CredentialGraph createCredentialGraph(JanusGraph graph) {
-        return new CredentialGraph(graph);
-    }
-
-    //Setup is the only modification from the TinkerPop SimpleAuthenticator.
-    @Override
-    public void setup(final Map<String,Object> config) {
-        logger.info("Initializing authentication with the {}", JanusGraphSimpleAuthenticator.class.getName());
-        if (null == config) {
-            throw new IllegalArgumentException(String.format(
-                    "Could not configure a %s - provide a 'config' in the 'authentication' settings",
-                    JanusGraphSimpleAuthenticator.class.getName()));
-        }
-
-        if (!config.containsKey(CONFIG_CREDENTIAL_DB)) {
-            throw new IllegalStateException(String.format(
-                    "Credential configuration missing the %s key that points to a graph config file or graph name", CONFIG_CREDENTIAL_DB));
-        }
-
-        final JanusGraph graph = openGraph(config.get(CONFIG_CREDENTIAL_DB).toString());
-        credentialStore = createCredentialGraph(graph);
-
-        graph.tx().rollback();
-        ManagementSystem mgmt = (ManagementSystem) graph.openManagement();
-        if (!mgmt.containsGraphIndex("byUsername")) {
-            final PropertyKey username = mgmt.makePropertyKey(PROPERTY_USERNAME).dataType(String.class).cardinality(Cardinality.SINGLE).make();
-            JanusGraphIndex index = mgmt.buildIndex("byUsername", Vertex.class).addKey(username).unique().buildCompositeIndex();
-            mgmt.commit();
-
-            if (!index.getIndexStatus(username).equals(SchemaStatus.ENABLED)) {
-                try {
-                    mgmt = (ManagementSystem) graph.openManagement();
-                    mgmt.updateIndex(mgmt.getGraphIndex("byUsername"), SchemaAction.REINDEX);
-                    mgmt.awaitGraphIndexStatus(graph, "byUsername").status(SchemaStatus.ENABLED).call();
-                } catch (InterruptedException rude) {
-                    throw new RuntimeException("Timed out waiting for byUsername index to be created on credential graph", rude);
-                }
-            }
-        }
-
-        if (credentialStore.countUsers() == 0) {
-            if (!config.containsKey(CONFIG_DEFAULT_USER) || !config.containsKey(CONFIG_DEFAULT_PASSWORD)) {
-                throw new IllegalStateException(String.format("If there are no users in your credential graph both %s and %s must be defined", CONFIG_DEFAULT_USER, CONFIG_DEFAULT_PASSWORD));
-            }
-            credentialStore.createUser(config.get(CONFIG_DEFAULT_USER).toString(), config.get(CONFIG_DEFAULT_PASSWORD).toString());
-        }
-
-    }
 
     @Override
     public SaslNegotiator newSaslNegotiator(final InetAddress remoteAddress) {
