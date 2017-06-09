@@ -36,7 +36,7 @@ import java.util.Map;
 public class SaslAndHMACAuthenticator extends JanusGraphAbstractAuthenticator {
     private static final String ILLEGAL_STATE_MESSAGE =
         "This exception is likely due to a misconfiguration. Try using the HMACAndSaslAuthenticationHandler as the " +
-        "authenticationHandler in the server configuration";
+        "authenticationHandler in the server authentication configuration";
 
     private Map<String, String> authenticatorConfig;
     private JanusGraphSimpleAuthenticator simpleAuthenticator = new JanusGraphSimpleAuthenticator();

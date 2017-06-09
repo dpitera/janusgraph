@@ -43,15 +43,16 @@ import org.junit.Test;
 public class SaslAndHMACAuthenticationHandlerTest extends EasyMockSupport {
 
     @Test
-    public void testHttpChannelReadWhenAuthenticatorHasNotBeenAdded() {
+    public void testHttpChannelReadWhenAuthenticatorHasNotBeenAdded() throws Exception {
         HMACAuthenticator hmacAuth = createMock(HMACAuthenticator.class);
         SaslAndHMACAuthenticator authenticator = createMock(SaslAndHMACAuthenticator.class);
         ChannelHandlerContext ctx = createMock(ChannelHandlerContext.class);
         ChannelPipeline pipeline = createMock(ChannelPipeline.class);
         HttpMessage msg = createMock(HttpMessage.class);
         HttpHeaders headers = createMock(HttpHeaders.class);
-        expect(authenticator.getHMACAuthenticator()).andReturn(hmacAuth);
 
+        expect(authenticator.getHMACAuthenticator()).andReturn(hmacAuth);
+        expect(authenticator.getSimpleAuthenticator()).andReturn(createMock(JanusGraphSimpleAuthenticator.class));
         expect(ctx.pipeline()).andReturn(pipeline).times(2);
         expect(pipeline.get("hmac_authenticator")).andReturn(null);
         expect(pipeline.addAfter(eq(PIPELINE_AUTHENTICATOR), eq("hmac_authenticator"), isA(ChannelHandler.class))).andReturn(null);
@@ -62,71 +63,29 @@ public class SaslAndHMACAuthenticationHandlerTest extends EasyMockSupport {
 
         SaslAndHMACAuthenticationHandler handler = new SaslAndHMACAuthenticationHandler(authenticator);
         handler.channelRead(ctx, msg);
-
     }
 
     @Test
-    public void testHttpChannelReadWhenAuthenticatorHasBeenAdded() {
+    public void testHttpChannelReadWhenAuthenticatorHasBeenAdded() throws Exception {
         SaslAndHMACAuthenticator authenticator = createMock(SaslAndHMACAuthenticator.class);
+        HMACAuthenticator hmacAuth = createMock(HMACAuthenticator.class);
         ChannelHandlerContext ctx = createMock(ChannelHandlerContext.class);
         ChannelHandler mockHandler = createMock(ChannelHandler.class);
         ChannelPipeline pipeline = createMock(ChannelPipeline.class);
         HttpMessage msg = createMock(HttpMessage.class);
         HttpHeaders headers = createMock(HttpHeaders.class);
 
-        expect(ctx.pipeline()).andReturn(pipeline).times(2);
+        expect(authenticator.getHMACAuthenticator()).andReturn(hmacAuth);
+        expect(authenticator.getSimpleAuthenticator()).andReturn(createMock(JanusGraphSimpleAuthenticator.class));
+        expect(ctx.pipeline()).andReturn(pipeline);
         expect(pipeline.get("hmac_authenticator")).andReturn(mockHandler);
-        expect(pipeline.get("sasl_authenticator")).andReturn(mockHandler);
         expect(msg.headers()).andReturn(headers).times(2);
-        expect(headers.get(eq(CONNECTION))).andReturn("Upgrade");
+        expect(headers.get(isA(String.class))).andReturn(null).times(2);
         expect(ctx.fireChannelRead(eq(msg))).andReturn(ctx);
         replayAll();
 
         SaslAndHMACAuthenticationHandler handler = new SaslAndHMACAuthenticationHandler(authenticator);
         handler.channelRead(ctx, msg);
-
-    }
-
-    @Test
-    public void testWsChannelReadWhenAuthenticatorHasNotBeenAdded() {
-        SaslAndHMACAuthenticator authenticator = createMock(SaslAndHMACAuthenticator.class);
-        ChannelHandlerContext ctx = createMock(ChannelHandlerContext.class);
-        ChannelHandler mockHandler = createMock(ChannelHandler.class);
-        ChannelPipeline pipeline = createMock(ChannelPipeline.class);
-        HttpMessage msg = createMock(HttpMessage.class);
-        HttpHeaders headers = createMock(HttpHeaders.class);
-
-        expect(authenticator.getSimpleAuthenticator()).andReturn(createMock(JanusGraphSimpleAuthenticator.class));
-        expect(ctx.pipeline()).andReturn(pipeline).times(2);
-        expect(pipeline.get("sasl_authenticator")).andReturn(null);
-        expect(msg.headers()).andReturn(headers).times(2);
-        expect(headers.get(isA(String.class))).andReturn(null).times(2);
-        expect(pipeline.addAfter(eq(PIPELINE_AUTHENTICATOR), eq("sasl_authenticator"), isA(ChannelHandler.class))).andReturn(null);
-        expect(ctx.fireChannelRead(isA(Object.class))).andReturn(ctx);
-        replayAll();
-
-        SaslAndHMACAuthenticationHandler handler = new SaslAndHMACAuthenticationHandler(authenticator);
-        handler.channelRead(ctx, new Object());
-
-    }
-
-    @Test
-    public void testWsChannelReadWhenAuthenticatorHasBeenAdded() {
-        SaslAndHMACAuthenticator authenticator = createMock(SaslAndHMACAuthenticator.class);
-        ChannelHandlerContext ctx = createMock(ChannelHandlerContext.class);
-        ChannelHandler mockHandler = createMock(ChannelHandler.class);
-        ChannelPipeline pipeline = createMock(ChannelPipeline.class);
-        HttpMessage msg = createMock(HttpMessage.class);
-        HttpHeaders headers = createMock(HttpHeaders.class);
-
-        expect(ctx.pipeline()).andReturn(pipeline);
-        expect(pipeline.get("sasl_authenticator")).andReturn(mockHandler);
-        expect(ctx.fireChannelRead(isA(Object.class))).andReturn(ctx);
-        replayAll();
-
-        SaslAndHMACAuthenticationHandler handler = new SaslAndHMACAuthenticationHandler(authenticator);
-        handler.channelRead(ctx, new Object());
-
     }
 
 }
