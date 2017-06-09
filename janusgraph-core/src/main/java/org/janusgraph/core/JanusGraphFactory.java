@@ -132,7 +132,7 @@ public class JanusGraphFactory {
                      "which will enable autocommit and rollback functionality upon all gremlin script executions." +
                      "Note that JanusGraphFactory#open(String === shortcut notation) does not support consuming the property" +
                      "\"graph.graphname\" so these graphs should be accessed dynamically by supplying a .properties file here" +
-                     "or by using the JanusConfiguredGraphFactory.");
+                     "or by using the JanusGraphConfiguredFactory.");
             return new StandardJanusGraph(new GraphDatabaseConfiguration(configuration));
         }
     }

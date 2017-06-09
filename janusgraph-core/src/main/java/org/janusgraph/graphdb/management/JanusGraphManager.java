@@ -16,7 +16,7 @@ package org.janusgraph.graphdb.management;
 
 import org.janusgraph.graphdb.database.StandardJanusGraph;
 import org.janusgraph.core.JanusGraphFactory;
-import org.janusgraph.core.JanusConfiguredGraphFactory;
+import org.janusgraph.core.JanusGraphConfiguredFactory;
 
 import org.apache.tinkerpop.gremlin.structure.util.GraphFactory;
 import org.apache.tinkerpop.gremlin.structure.Graph;
