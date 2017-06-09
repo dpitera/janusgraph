@@ -43,7 +43,7 @@ import java.io.FileInputStream;
  * class also defines a close which allows for removal of these {@link Graph} objects from the
  * {@link JanusGraphManager} reference tracker.
  */
-public class JanusConfiguredGraphFactory {
+public class JanusGraphConfiguredFactory {
     /**
      * Creates a {@link JanusGraph} configuration stored in {@ConfigurationGraphManagament}
      * configurationGraph and a {@link JanusGraph} graph reference according to the single

@@ -17,7 +17,7 @@ package org.janusgraph.core;
 import org.janusgraph.graphdb.management.JanusGraphManager;
 import org.janusgraph.graphdb.management.ConfigurationManagementGraph;
 import org.janusgraph.graphdb.management.utils.ConfigurationManagementGraphNotEnabledException;
-import org.janusgraph.core.JanusConfiguredGraphFactory;
+import org.janusgraph.core.JanusGraphConfiguredFactory;
 import org.janusgraph.core.JanusGraphFactory;
 import org.janusgraph.diskstorage.configuration.backend.CommonsConfiguration;
 import org.janusgraph.graphdb.database.StandardJanusGraph;
@@ -38,7 +38,7 @@ import org.junit.Ignore;
 import org.junit.After;
 import static org.junit.Assert.*;
 
-public class JanusConfiguredGraphFactoryTest {
+public class JanusGraphConfiguredFactoryTest {
     private static JanusGraphManager gm;
     private static ConfigurationManagementGraph configGraphManagement;
     static {
@@ -70,11 +70,11 @@ public class JanusConfiguredGraphFactoryTest {
             map.put(STORAGE_BACKEND.toStringWithoutRoot(), "inmemory");
             map.put(GRAPH_NAME.toStringWithoutRoot(), "graph1");
             configGraphManagement.createConfiguration(new MapConfiguration(map));
-            StandardJanusGraph graph = (StandardJanusGraph) JanusConfiguredGraphFactory.open("graph1");
+            StandardJanusGraph graph = (StandardJanusGraph) JanusGraphConfiguredFactory.open("graph1");
             assertNotNull(graph);
         } finally {
             configGraphManagement.removeConfiguration("graph1");
-            JanusConfiguredGraphFactory.close("graph1");
+            JanusGraphConfiguredFactory.close("graph1");
         }
     }
 
@@ -85,13 +85,13 @@ public class JanusConfiguredGraphFactoryTest {
             map.put(STORAGE_BACKEND.toStringWithoutRoot(), "inmemory");
             map.put(GRAPH_NAME.toStringWithoutRoot(), "graph1");
             configGraphManagement.createConfiguration(new MapConfiguration(map));
-            StandardJanusGraph graph = (StandardJanusGraph) JanusConfiguredGraphFactory.open("graph1");
+            StandardJanusGraph graph = (StandardJanusGraph) JanusGraphConfiguredFactory.open("graph1");
             assertNotNull(graph);
             assertEquals(graph.getConfiguration().getConfiguration().get(GRAPH_NAME), "graph1");
             assertEquals(graph.getConfiguration().getConfiguration().get(STORAGE_BACKEND), "inmemory");
         } finally {
             configGraphManagement.removeConfiguration("graph1");
-            JanusConfiguredGraphFactory.close("graph1");
+            JanusGraphConfiguredFactory.close("graph1");
         }
     }
 
@@ -101,14 +101,14 @@ public class JanusConfiguredGraphFactoryTest {
             Map<String, Object> map = new HashMap<String, Object>();
             map.put(STORAGE_BACKEND.toStringWithoutRoot(), "inmemory");
             configGraphManagement.createTemplateConfiguration(new MapConfiguration(map));
-            StandardJanusGraph graph = (StandardJanusGraph) JanusConfiguredGraphFactory.create("graph1");
-            StandardJanusGraph graph1 = (StandardJanusGraph) JanusConfiguredGraphFactory.open("graph1");
+            StandardJanusGraph graph = (StandardJanusGraph) JanusGraphConfiguredFactory.create("graph1");
+            StandardJanusGraph graph1 = (StandardJanusGraph) JanusGraphConfiguredFactory.open("graph1");
 
             assertNotNull(graph);
             assertEquals(graph, graph1);
         } finally {
             configGraphManagement.removeConfiguration("graph1");
-            JanusConfiguredGraphFactory.close("graph1");
+            JanusGraphConfiguredFactory.close("graph1");
         }
     }
 
@@ -120,8 +120,8 @@ public class JanusConfiguredGraphFactoryTest {
             Map<String, Object> map = new HashMap<String, Object>();
             map.put(STORAGE_BACKEND.toStringWithoutRoot(), "inmemory");
             configGraphManagement.createTemplateConfiguration(new MapConfiguration(map));
-            StandardJanusGraph graph = (StandardJanusGraph) JanusConfiguredGraphFactory.create("graph1");
-            StandardJanusGraph graph1 = (StandardJanusGraph) JanusConfiguredGraphFactory.open("graph1");
+            StandardJanusGraph graph = (StandardJanusGraph) JanusGraphConfiguredFactory.create("graph1");
+            StandardJanusGraph graph1 = (StandardJanusGraph) JanusGraphConfiguredFactory.open("graph1");
 
             assertNotNull(graph);
             assertEquals(graph, graph1);
@@ -130,7 +130,7 @@ public class JanusConfiguredGraphFactoryTest {
 
         } finally {
             configGraphManagement.removeConfiguration("graph1");
-            JanusConfiguredGraphFactory.close("graph1");
+            JanusGraphConfiguredFactory.close("graph1");
         }
     }
 
@@ -138,7 +138,7 @@ public class JanusConfiguredGraphFactoryTest {
     public void shouldThrowConfigurationDoesNotExistError() {
         boolean errorThrown = false;
         try {
-            JanusConfiguredGraphFactory.open("graph1");
+            JanusGraphConfiguredFactory.open("graph1");
         } catch (RuntimeException e) {
             errorThrown = true;
         }
@@ -149,7 +149,7 @@ public class JanusConfiguredGraphFactoryTest {
     public void shouldThrowTemplateConfigurationDoesNotExistError() {
         boolean errorThrown = false;
         try {
-            JanusConfiguredGraphFactory.create("graph1");
+            JanusGraphConfiguredFactory.create("graph1");
         } catch (RuntimeException e) {
             errorThrown = true;
         }
@@ -166,7 +166,7 @@ public class JanusConfiguredGraphFactoryTest {
         configGraphManagement.createConfiguration(new MapConfiguration(map));
         configGraphManagement.removeConfiguration("graph1");
         try {
-            JanusConfiguredGraphFactory.open("graph1");
+            JanusGraphConfiguredFactory.open("graph1");
         } catch (RuntimeException e) {
             errorThrown = true;
         }
@@ -183,7 +183,7 @@ public class JanusConfiguredGraphFactoryTest {
         configGraphManagement.createTemplateConfiguration(new MapConfiguration(map));
         configGraphManagement.removeTemplateConfiguration();
         try {
-            JanusConfiguredGraphFactory.create("graph1");
+            JanusGraphConfiguredFactory.create("graph1");
         } catch (RuntimeException e) {
             errorThrown = true;
         }
@@ -201,7 +201,7 @@ public class JanusConfiguredGraphFactoryTest {
         configGraphManagement.createConfiguration(new MapConfiguration(map));
         configGraphManagement.removeConfiguration("graph1");
         try {
-            JanusConfiguredGraphFactory.create("graph1");
+            JanusGraphConfiguredFactory.create("graph1");
         } catch (RuntimeException e) {
             errorThrown = true;
         }
@@ -217,19 +217,19 @@ public class JanusConfiguredGraphFactoryTest {
             map.put(STORAGE_BACKEND.toStringWithoutRoot(), "inmemory");
             map.put(GRAPH_NAME.toStringWithoutRoot(), "graph1");
             configGraphManagement.createConfiguration(new MapConfiguration(map));
-            StandardJanusGraph graph = (StandardJanusGraph) JanusConfiguredGraphFactory.open("graph1");
+            StandardJanusGraph graph = (StandardJanusGraph) JanusGraphConfiguredFactory.open("graph1");
             assertNotNull(graph);
 
             map.put(STORAGE_BACKEND.toStringWithoutRoot(), "bogusBackend");
             configGraphManagement.updateConfiguration("graph1", new MapConfiguration(map));
 
-            StandardJanusGraph graph1 = (StandardJanusGraph) JanusConfiguredGraphFactory.open("graph1");
+            StandardJanusGraph graph1 = (StandardJanusGraph) JanusGraphConfiguredFactory.open("graph1");
             assertNotNull(graph);
 
-            JanusConfiguredGraphFactory.close("graph1");
+            JanusGraphConfiguredFactory.close("graph1");
 
             try {
-                StandardJanusGraph graph2 = (StandardJanusGraph) JanusConfiguredGraphFactory.open("graph1");
+                StandardJanusGraph graph2 = (StandardJanusGraph) JanusGraphConfiguredFactory.open("graph1");
             } catch (Exception e) {
                 // we should throw an error since the config has been updated and we are attempting
                 // to open a bogus backend
@@ -238,7 +238,7 @@ public class JanusConfiguredGraphFactoryTest {
             assertTrue(errorThrown);
         } finally {
             configGraphManagement.removeConfiguration("graph1");
-            JanusConfiguredGraphFactory.close("graph1");
+            JanusGraphConfiguredFactory.close("graph1");
         }
     }
 
@@ -247,8 +247,8 @@ public class JanusConfiguredGraphFactoryTest {
         try {Map<String, Object> map = new HashMap<String, Object>();
             map.put(STORAGE_BACKEND.toStringWithoutRoot(), "inmemory");
             configGraphManagement.createTemplateConfiguration(new MapConfiguration(map));
-            StandardJanusGraph graph1 = (StandardJanusGraph) JanusConfiguredGraphFactory.create("graph1");
-            StandardJanusGraph graph2 = (StandardJanusGraph) JanusConfiguredGraphFactory.create("graph2");
+            StandardJanusGraph graph1 = (StandardJanusGraph) JanusGraphConfiguredFactory.create("graph1");
+            StandardJanusGraph graph2 = (StandardJanusGraph) JanusGraphConfiguredFactory.create("graph2");
 
             assertNotNull(graph1);
             assertNotNull(graph2);
@@ -258,8 +258,8 @@ public class JanusConfiguredGraphFactoryTest {
         } finally {
             configGraphManagement.removeConfiguration("graph1");
             configGraphManagement.removeConfiguration("graph2");
-            JanusConfiguredGraphFactory.close("graph1");
-            JanusConfiguredGraphFactory.close("graph2");
+            JanusGraphConfiguredFactory.close("graph1");
+            JanusGraphConfiguredFactory.close("graph2");
         }
     }
 
@@ -267,7 +267,7 @@ public class JanusConfiguredGraphFactoryTest {
     public void fileToMapConfigurationShouldReturnAllProperties() throws IOException {
         File file = new File(getClass().getClassLoader().getResource("org/janusgraph/core/janusgraph-testing.properties").getFile());
         String propertiesFileLocation = file.getAbsolutePath();
-        MapConfiguration config = JanusConfiguredGraphFactory.fileToMapConfiguration(propertiesFileLocation);
+        MapConfiguration config = JanusGraphConfiguredFactory.fileToMapConfiguration(propertiesFileLocation);
 
         assertNotNull(config);
 
