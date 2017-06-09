@@ -97,7 +97,7 @@ public class ConfigurationManagementGraph {
      * Create a configuration according to the supplied {@link MapConfiguration}; you must include
      * the property "graph.graphname" with a {@link String} value in the configuration; you can then
      * open your {@link JanusGraph} using {@link String} graph.graphname without having to supply the
-     * a Configuration or File each time using the {@JanusConfiguredGraphFactory}.
+     * a Configuration or File each time using the {@JanusGraphConfiguredFactory}.
      */
     public void createConfiguration(final MapConfiguration config) {
         if (!config.containsKey(PROPERTY_GRAPH_NAME)) {
@@ -120,7 +120,7 @@ public class ConfigurationManagementGraph {
      * you already created a Template_Configuration or the supplied {@link MapConfiguration}
      * contains the property "graph.graphname", we throw a {@link RuntimeException}; you can then use
      * this Template_Configuration to create a {@JanusGraph} using the {@link
-     * JanusConfiguredGraphFactory} create signature and supplying a new {@link String} graphName.
+     * JanusGraphConfiguredFactory} create signature and supplying a new {@link String} graphName.
      */
     public void createTemplateConfiguration(MapConfiguration config) {
         if (config.containsKey(PROPERTY_GRAPH_NAME)) {
