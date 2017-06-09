@@ -17,7 +17,6 @@ import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.HttpMessage;
 import org.apache.tinkerpop.gremlin.server.auth.Authenticator;
-import org.apache.tinkerpop.gremlin.server.handler.AbstractAuthenticationHandler;
 import org.apache.tinkerpop.gremlin.server.handler.SaslAuthenticationHandler;
 import org.apache.tinkerpop.gremlin.server.handler.WebSocketHandlerUtil;
 import org.janusgraph.graphdb.tinkerpop.gremlin.server.auth.SaslAndHMACAuthenticator;
@@ -32,29 +31,27 @@ import static org.apache.tinkerpop.gremlin.server.channel.HttpChannelizer.PIPELI
  * @author Keith Lohnes lohnesk@gmail.com
  */
 @ChannelHandler.Sharable
-public class SaslAndHMACAuthenticationHandler extends AbstractAuthenticationHandler {
+public class SaslAndHMACAuthenticationHandler extends SaslAuthenticationHandler {
 
     private final String HMAC_AUTH = "hmac_authenticator";
-    private final String SASL_AUTH = "sasl_authenticator";
+    private HMACAuthenticator hmacAuthenticator;
 
     public SaslAndHMACAuthenticationHandler(final Authenticator authenticator) {
-        super(authenticator);
+        super((Authenticator) ((SaslAndHMACAuthenticator) authenticator).getSimpleAuthenticator());
+        hmacAuthenticator = ((SaslAndHMACAuthenticator) authenticator).getHMACAuthenticator();
     }
 
     @Override
-    public void channelRead(final ChannelHandlerContext ctx, final Object obj) {
-        if (obj instanceof HttpMessage
-            && null == ctx.pipeline().get(HMAC_AUTH)
-            && !WebSocketHandlerUtil.isWebSocket((HttpMessage)obj)) {
-            final HMACAuthenticator hmacAuthenticator = ((SaslAndHMACAuthenticator)authenticator).getHMACAuthenticator();
-            final HttpHMACAuthenticationHandler authHandler = new HttpHMACAuthenticationHandler(hmacAuthenticator);
-            ctx.pipeline().addAfter(PIPELINE_AUTHENTICATOR, HMAC_AUTH, authHandler);
-        } else if (null == ctx.pipeline().get(SASL_AUTH)) {
-            final JanusGraphSimpleAuthenticator simpleAuthenticator = ((SaslAndHMACAuthenticator)authenticator).getSimpleAuthenticator();
-            final SaslAuthenticationHandler authHandler = new SaslAuthenticationHandler(simpleAuthenticator);
-            ctx.pipeline().addAfter(PIPELINE_AUTHENTICATOR, SASL_AUTH, authHandler);
+    public void channelRead(final ChannelHandlerContext ctx, final Object obj) throws Exception {
+        if (obj instanceof HttpMessage && !WebSocketHandlerUtil.isWebSocket((HttpMessage)obj)) {
+            if (null == ctx.pipeline().get(HMAC_AUTH)) {
+                final HttpHMACAuthenticationHandler authHandler = new HttpHMACAuthenticationHandler(hmacAuthenticator);
+                ctx.pipeline().addAfter(PIPELINE_AUTHENTICATOR, HMAC_AUTH, authHandler);
+            }
+            ctx.fireChannelRead(obj);
+        } else {
+            super.channelRead(ctx, obj);
         }
-        ctx.fireChannelRead(obj);
     }
 
 }
