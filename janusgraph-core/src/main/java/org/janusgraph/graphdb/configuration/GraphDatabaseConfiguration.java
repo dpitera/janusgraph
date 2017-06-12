@@ -116,7 +116,7 @@ public class GraphDatabaseConfiguration {
     public static final ConfigOption<String> GRAPH_NAME = new ConfigOption<String>(GRAPH_NS, "graphname",
             "This config option is an optional configuration setting that you may supply when opening a graph. " +
             "The String value you provide will be the name of your graph. If you use the ConfigurationManagament APIs, " +
-            "then you will be able to access your graph by this String representation using the JanusGraphConfiguredFactory APIs.",
+            "then you will be able to access your graph by this String representation using the ConfiguredGraphFactory APIs.",
             ConfigOption.Type.LOCAL, String.class);
 
     public static final ConfigOption<TimestampProviders> TIMESTAMP_PROVIDER = new ConfigOption<TimestampProviders>(GRAPH_NS, "timestamps",
