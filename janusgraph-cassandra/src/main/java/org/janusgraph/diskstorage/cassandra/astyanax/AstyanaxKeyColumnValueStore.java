@@ -25,6 +25,7 @@ import com.netflix.astyanax.query.AllRowsQuery;
 import com.netflix.astyanax.query.RowSliceQuery;
 import com.netflix.astyanax.retry.RetryPolicy;
 import com.netflix.astyanax.serializers.ByteBufferSerializer;
+import com.netflix.astyanax.query.RowQuery;
 import org.janusgraph.diskstorage.*;
 import org.janusgraph.diskstorage.cassandra.utils.CassandraHelper;
 import org.janusgraph.diskstorage.keycolumnvalue.*;
@@ -46,6 +47,7 @@ public class AstyanaxKeyColumnValueStore implements KeyColumnValueStore {
     private final ColumnFamily<ByteBuffer, ByteBuffer> columnFamily;
     private final RetryPolicy retryPolicy;
     private final AstyanaxStoreManager storeManager;
+    private final int readPageSize;
     private final AstyanaxGetter entryGetter;
 
     AstyanaxKeyColumnValueStore(String columnFamilyName,
@@ -56,6 +58,7 @@ public class AstyanaxKeyColumnValueStore implements KeyColumnValueStore {
         this.columnFamilyName = columnFamilyName;
         this.retryPolicy = retryPolicy;
         this.storeManager = storeManager;
+        this.readPageSize = storeManager.readPageSize;
 
         entryGetter = new AstyanaxGetter(storeManager.getMetaDataSchema(columnFamilyName));
 
@@ -110,16 +113,26 @@ public class AstyanaxKeyColumnValueStore implements KeyColumnValueStore {
          * hard-coded, and dies.
          *
          */
-        RowSliceQuery rq = keyspace.prepareQuery(columnFamily)
-                .setConsistencyLevel(getTx(txh).getReadConsistencyLevel().getAstyanax())
-                .withRetryPolicy(retryPolicy.duplicate())
-                .getKeySlice(CassandraHelper.convert(keys));
 
-        // Thank you, Astyanax, for making builder pattern useful :(
-        rq.withColumnRange(query.getSliceStart().asByteBuffer(),
-                query.getSliceEnd().asByteBuffer(),
-                false,
-                query.getLimit() + (query.hasLimit()?1:0)); //Add one for potentially removed last column
+         // Add one for last column potentially removed in CassandraHelper.makeEntryList
+        int queryLimit = query.getLimit() + (query.hasLimit() ? 1 : 0);
+        int pageLimit = Math.min(this.readPageSize, queryLimit);
+
+        ByteBuffer sliceStart = query.getSliceStart().asByteBuffer();
+        ByteBuffer sliceEnd = query.getSliceEnd().asByteBuffer();
+
+        RowSliceQuery rq = keyspace.prepareQuery(columnFamily)
+            .setConsistencyLevel(getTx(txh).getReadConsistencyLevel().getAstyanax())
+            .withRetryPolicy(retryPolicy.duplicate())
+            .getKeySlice(CassandraHelper.convert(keys));
+
+        // Don't directly chain due to ambiguity resolution; see top comment
+        rq.withColumnRange(
+            sliceStart,
+            sliceEnd,
+            false,
+            pageLimit
+        );
 
         OperationResult<Rows<ByteBuffer, ByteBuffer>> r;
         try {
@@ -133,8 +146,56 @@ public class AstyanaxKeyColumnValueStore implements KeyColumnValueStore {
 
         for (Row<ByteBuffer, ByteBuffer> row : rows) {
             assert !result.containsKey(row.getKey());
-            result.put(StaticArrayBuffer.of(row.getKey()),
-                  CassandraHelper.makeEntryList(row.getColumns(),entryGetter, query.getSliceEnd(), query.getLimit()));
+            ByteBuffer key = row.getKey();
+            ColumnList<ByteBuffer> pageColumns = row.getColumns();
+            ArrayList<Column<ByteBuffer>> queryColumns = new ArrayList();
+            Iterables.addAll(queryColumns, pageColumns);
+            while (pageColumns.size() == pageLimit && queryColumns.size() < queryLimit) {
+                Column<ByteBuffer> lastColumn = queryColumns.get(queryColumns.size() - 1);
+                sliceStart = lastColumn.getName();
+                // No possibility of two values at the same column name, so start the
+                // next slice one bit after the last column found by the previous query.
+                // byte[] is little-endian
+                for (int i = sliceStart.array().length - 1; i >= 0; i--) {
+                    if (sliceStart.array()[i] < 127) {
+                        sliceStart.array()[i]++;
+                        break;
+                    }
+                }
+                RowQuery pageQuery = keyspace.prepareQuery(columnFamily)
+                    .setConsistencyLevel(getTx(txh).getReadConsistencyLevel().getAstyanax())
+                    .withRetryPolicy(retryPolicy.duplicate()).getKey(row.getKey());
+
+                // Don't directly chain due to ambiguity resolution; see top comment
+                pageQuery.withColumnRange(
+                    sliceStart,
+                    sliceEnd,
+                    false,
+                    pageLimit
+                );
+
+                OperationResult<ColumnList<ByteBuffer>> pageResult;
+                try {
+                    pageResult = (OperationResult<ColumnList<ByteBuffer>>) pageQuery.execute();
+                } catch (ConnectionException e) {
+                    throw new TemporaryBackendException(e);
+                }
+
+                if (Thread.interrupted()) {
+                    throw new RuntimeException(new InterruptedException());
+                }
+
+                pageColumns = pageResult.getResult();
+                Iterables.addAll(queryColumns, pageColumns);
+            }
+            result.put(
+                StaticArrayBuffer.of(key),
+                CassandraHelper.makeEntryList(queryColumns,
+                                              entryGetter,
+                                              query.getSliceEnd(),
+                                              query.getLimit()
+              )
+            );
         }
 
         return result;
