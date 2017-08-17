@@ -17,6 +17,7 @@ package org.janusgraph.graphdb.database.management;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableSet;
 import org.janusgraph.core.JanusGraphTransaction;
+import org.janusgraph.core.schema.JanusGraphManagement;
 import org.janusgraph.diskstorage.ResourceUnavailableException;
 
 import org.janusgraph.diskstorage.util.time.Timer;
@@ -39,6 +40,7 @@ import java.time.Duration;
 import java.util.Iterator;
 import java.util.Set;
 import java.util.List;
+import java.util.stream.Collectors;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -110,7 +112,7 @@ public class ManagementLogger implements MessageReader {
                                              Set<String> openInstances) {
         Preconditions.checkArgument(!openInstances.isEmpty());
         long evictionId = evictionTriggerCounter.incrementAndGet();
-        evictionTriggerMap.put(evictionId,new EvictionTrigger(evictionId,updatedTypeTriggers,openInstances));
+        evictionTriggerMap.put(evictionId,new EvictionTrigger(evictionId,updatedTypeTriggers,graph));
         DataOutput out = graph.getDataSerializer().getDataOutput(128);
         out.writeObjectNotNull(MgmtLogType.CACHED_TYPE_EVICTION);
         VariableLong.writePositive(out,evictionId);
@@ -122,38 +124,73 @@ public class ManagementLogger implements MessageReader {
         sysLog.add(out.getStaticBuffer());
     }
 
+    @Override
+    public void updateState() {
+        evictionTriggerMap.forEach((k, v) -> {
+            final int countdown = v.updateInstancesAndAckCounter();
+            if (countdown == 0) {
+                v.runTriggers();
+            }
+        });
+    }
+
     private class EvictionTrigger {
 
         final long evictionId;
         final List<Callable<Boolean>> updatedTypeTriggers;
-        final ImmutableSet<String> openInstances;
-        final AtomicInteger ackCounter;
+        final StandardJanusGraph graph;
+        volatile Set<String> openInstances;
+        volatile int ackCounter;
+        final Object updateLock;
 
-        private EvictionTrigger(long evictionId, List<Callable<Boolean>> updatedTypeTriggers, Set<String> openInstances) {
+        private EvictionTrigger(long evictionId, List<Callable<Boolean>> updatedTypeTriggers, StandardJanusGraph graph) {
+            this.graph = graph;
             this.evictionId = evictionId;
             this.updatedTypeTriggers = updatedTypeTriggers;
-            this.openInstances = ImmutableSet.copyOf(openInstances);
-            this.ackCounter = new AtomicInteger(openInstances.size());
+            final JanusGraphManagement mgmt = graph.openManagement();
+            this.openInstances = ((ManagementSystem) mgmt).getOpenInstancesInternal();
+            mgmt.rollback();
+            this.ackCounter = openInstances.size();
+            this.updateLock = new Object();
         }
 
         void receivedAcknowledgement(String senderId) {
             if (openInstances.contains(senderId)) {
-                int countdown = ackCounter.decrementAndGet();
+                synchronized (updateLock) {
+                    this.ackCounter--;
+                }
                 log.debug("Received acknowledgement for eviction [{}] from senderID={} ({} more acks still outstanding)",
-                        evictionId, senderId, countdown);
-                if (countdown==0) { //Trigger actions
-                    for (Callable<Boolean> trigger : updatedTypeTriggers) {
-                        try {
-                            boolean success = trigger.call();
-                            assert success;
-                        } catch (Throwable e) {
-                            log.error("Could not execute trigger ["+trigger.toString()+"] for eviction ["+evictionId+"]",e);
-                        }
-                    }
-                    log.info("Received all acknowledgements for eviction [{}]",evictionId);
-                    evictionTriggerMap.remove(evictionId,this);
+                        evictionId, senderId, ackCounter);
+                if (this.ackCounter==0) { //Trigger actions
+                    runTriggers();
                 }
             }
+        }
+
+        void runTriggers() {
+            for (Callable<Boolean> trigger : updatedTypeTriggers) {
+                try {
+                    boolean success = trigger.call();
+                    assert success;
+                } catch (Throwable e) {
+                    log.error("Could not execute trigger ["+trigger.toString()+"] for eviction ["+evictionId+"]",e);
+                }
+            }
+            log.info("Received all acknowledgements for eviction [{}]",evictionId);
+            evictionTriggerMap.remove(evictionId,this);
+        }
+
+        int updateInstancesAndAckCounter() {
+            final JanusGraphManagement mgmt = graph.openManagement();
+            final Set<String> updatedInstances = ((ManagementSystem) mgmt).getOpenInstancesInternal();
+            synchronized (updateLock) {
+                final Set<String> survivingInstances = openInstances.stream().filter(it -> !updatedInstances.contains(it)).collect(Collectors.toSet());
+                final int difference = this.openInstances.size() - survivingInstances.size(); //openInstances can only shrink
+                this.ackCounter = this.ackCounter - difference;
+                this.openInstances = survivingInstances;
+            }
+            mgmt.rollback();
+            return this.ackCounter;
         }
     }
 

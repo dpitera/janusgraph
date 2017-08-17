@@ -3629,6 +3629,8 @@ public abstract class JanusGraphTest extends JanusGraphBaseTest {
         for (LogTxStatus status : LogTxStatus.values()) txMsgCounter.put(status, new AtomicInteger(0));
         final AtomicInteger userlogMeta = new AtomicInteger(0);
         txlog.registerReader(startMarker, new MessageReader() {
+            @Override public void updateState() {}
+
             @Override
             public void read(Message message) {
                 Instant msgTime = message.getTimestamp();
@@ -3668,6 +3670,9 @@ public abstract class JanusGraphTest extends JanusGraphBaseTest {
         for (Change change : Change.values()) userChangeCounter.put(change, new AtomicInteger(0));
         final AtomicInteger userLogMsgCounter = new AtomicInteger(0);
         userLog.registerReader(startMarker, new MessageReader() {
+            @Override
+            public void updateState() {}
+
             @Override
             public void read(Message message) {
                 Instant msgTime = message.getTimestamp();
