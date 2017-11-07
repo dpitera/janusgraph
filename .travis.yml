@@ -16,55 +16,76 @@ branches:
 env:
   global:
     - RELEASE_REGEX=[0-9]+.[0-9]+.[0-9]+
+    - ES_JAVA_OPTS="-Xms256m -Xmx512m"
   matrix:
-    - MODULE='janusgraph-berkeleyje'
-    - MODULE='janusgraph-cassandra'
-    - MODULE='janusgraph-cql'
-    - MODULE='janusgraph-es' ARGS='-DthreadCount=1'
-    - MODULE='janusgraph-hadoop-parent/janusgraph-hadoop-2'
-    - MODULE='janusgraph-hbase-parent/janusgraph-hbase-098'
-    - MODULE='janusgraph-hbase-parent/janusgraph-hbase-10'
-    - MODULE='janusgraph-lucene' ARGS='-DthreadCount=1'
+    # sort modules by test time with quickest modules first
+    - MODULE='hadoop-parent/janusgraph-hadoop-2'
+    - MODULE='lucene'
+    - MODULE='solr' ARGS='-Pdocker,solr7'
+    - MODULE='solr' ARGS='-Pdocker,solr6'
+    - MODULE='solr' ARGS='-Pdocker,solr5'
+    - MODULE='es' ARGS='-Pelasticsearch6'
+    - MODULE='es' ARGS='-Pelasticsearch5'
+    - MODULE='es' ARGS='-Pelasticsearch2'
+    - MODULE='es' ARGS='-Pelasticsearch1,es-docker'
+    - MODULE='berkeleyje'
+    - MODULE='test'
+    - MODULE='cassandra' ARGS='-Dtest=**/diskstorage/cassandra/thrift/* -Dtest.skip.unordered=true -Dtest.skip.ssl=true -Dtest.skip.serial=true'
+    - MODULE='cassandra' ARGS='-Dtest=**/diskstorage/cassandra/thrift/* -Dtest.skip.ordered=true -Dtest.skip.ssl=true -Dtest.skip.serial=true'
+    - MODULE='cassandra' ARGS='-Dtest=**/diskstorage/cassandra/thrift/* -Dtest.skip.unordered=true -Dtest.skip.ordered=true'
+    - MODULE='cassandra' ARGS='-Dtest=**/graphdb/thrift/* -Dtest.skip.unordered=true -Dtest.skip.ssl=true -Dtest.skip.serial=true'
+    - MODULE='cassandra' ARGS='-Dtest=**/graphdb/thrift/* -Dtest.skip.ordered=true -Dtest.skip.ssl=true -Dtest.skip.serial=true'
+    - MODULE='cassandra' ARGS='-Dtest=**/graphdb/thrift/* -Dtest.skip.unordered=true -Dtest.skip.ordered=true'
+    - MODULE='cassandra' ARGS='-Dtest=**/diskstorage/cassandra/astyanax/* -Dtest.skip.unordered=true -Dtest.skip.ssl=true -Dtest.skip.serial=true'
+    - MODULE='cassandra' ARGS='-Dtest=**/diskstorage/cassandra/astyanax/* -Dtest.skip.ordered=true -Dtest.skip.ssl=true -Dtest.skip.serial=true'
+    - MODULE='cassandra' ARGS='-Dtest=**/diskstorage/cassandra/astyanax/* -Dtest.skip.unordered=true -Dtest.skip.ordered=true'
+    - MODULE='cassandra' ARGS='-Dtest=**/graphdb/astyanax/*'
+    - MODULE='cassandra' ARGS='-Dtest=**/diskstorage/cassandra/embedded/*'
+    - MODULE='cassandra' ARGS='-Dtest=***/cassandra/*,*/graphdb/embedded/*'
+    - MODULE='hbase-parent/janusgraph-hbase-10' ARGS='-Dtest=**/diskstorage/hbase/*'
+    - MODULE='hbase-parent/janusgraph-hbase-10' ARGS='-Dtest=**/graphdb/hbase/*'
+    - MODULE='hbase-parent/janusgraph-hbase-098' ARGS='-Dtest=**/diskstorage/hbase/*'
+    - MODULE='hbase-parent/janusgraph-hbase-098' ARGS='-Dtest=**/graphdb/hbase/*'
+    - MODULE='cql' ARGS='-Dtest=**/diskstorage/cql/* -Dtest.skip.murmur=true'
+    - MODULE='cql' ARGS='-Dtest=**/diskstorage/cql/* -Dtest.skip.byteorderedpartitioner=true -Dtest.skip.murmur-serial=true -Dtest.skip.murmur-ssl=true'
+    - MODULE='cql' ARGS='-Dtest=**/graphdb/cql/* -Dtest.skip.murmur=true'
+    - MODULE='cql' ARGS='-Dtest=**/graphdb/cql/* -Dtest.skip.byteorderedpartitioner=true -Dtest.skip.murmur-serial=true -Dtest.skip.murmur-ssl=true'
     - MODULE='janusgraph-release'
-    - MODULE='janusgraph-server'
-    - MODULE='janusgraph-solr' ARGS='-DthreadCount=1'
-    - MODULE='janusgraph-test'
 
 matrix:
+  fast_finish: true
   # https://docs.travis-ci.com/user/customizing-the-build#Rows-that-are-Allowed-to-Fail
   allow_failures:
-    # Non-deterministic: can pass or fail, regardless of any relevant changes.
-    # https://travis-ci.org/JanusGraph/janusgraph/jobs/198165185
-    - env: MODULE='janusgraph-berkeleyje'
-
-    # Currently broken due to too many log statements (exceeds 4MB)
-    # https://travis-ci.org/JanusGraph/janusgraph/jobs/197472452
-    - env: MODULE='janusgraph-cassandra'
-
-    # Currently broken due to too many log statements (exceeds 4MB)
-    # https://travis-ci.org/JanusGraph/janusgraph/jobs/197472453
-    - env: MODULE='janusgraph-es' ARGS='-DthreadCount=1'
-
-    # Currently broken due to too many log statements (exceeds 4MB)
-    # https://travis-ci.org/JanusGraph/janusgraph/jobs/197672947
-    - env: MODULE='janusgraph-hadoop-parent/janusgraph-hadoop-2'
-
-    # Currently broken due to timeout (runs longer than 50min)
-    # https://travis-ci.org/JanusGraph/janusgraph/jobs/197672951
-    - env: MODULE='janusgraph-hbase-parent/janusgraph-hbase-098'
-
-    # Currently broken due to timeout (runs longer than 50min)
-    # https://travis-ci.org/JanusGraph/janusgraph/jobs/197672952
-    - env: MODULE='janusgraph-hbase-parent/janusgraph-hbase-10'
-
-    # Currently broken due to too many log statements (exceeds 4MB)
-    # https://travis-ci.org/JanusGraph/janusgraph/jobs/197427609
-    - env: MODULE='janusgraph-solr' ARGS='-DthreadCount=1'
+    # Elasticsearch 1.x tests can fail non-deterministically
+    - env: MODULE='es' ARGS='-Pelasticsearch1,es-docker'
+    # Can fail due to timeout (runs longer than 50min)
+    - env: MODULE='hbase-parent/janusgraph-hbase-098' ARGS='-Dtest=**/diskstorage/hbase/*'
+    - env: MODULE='hbase-parent/janusgraph-hbase-098' ARGS='-Dtest=**/graphdb/hbase/*'
+    - env: MODULE='cassandra' ARGS='-Dtest=**/diskstorage/cassandra/thrift/* -Dtest.skip.unordered=true -Dtest.skip.ssl=true -Dtest.skip.serial=true'
+    - env: MODULE='cassandra' ARGS='-Dtest=**/diskstorage/cassandra/thrift/* -Dtest.skip.ordered=true -Dtest.skip.ssl=true -Dtest.skip.serial=true'
+    - env: MODULE='cassandra' ARGS='-Dtest=**/diskstorage/cassandra/thrift/* -Dtest.skip.unordered=true -Dtest.skip.ordered=true'
+    - env: MODULE='cassandra' ARGS='-Dtest=**/graphdb/thrift/* -Dtest.skip.unordered=true -Dtest.skip.ssl=true -Dtest.skip.serial=true'
+    - env: MODULE='cassandra' ARGS='-Dtest=**/graphdb/thrift/* -Dtest.skip.ordered=true -Dtest.skip.ssl=true -Dtest.skip.serial=true'
+    - env: MODULE='cassandra' ARGS='-Dtest=**/graphdb/thrift/* -Dtest.skip.unordered=true -Dtest.skip.ordered=true'
+    - env: MODULE='cql' ARGS='-Dtest=**/diskstorage/cql/* -Dtest.skip.murmur=true'
+    - env: MODULE='cql' ARGS='-Dtest=**/diskstorage/cql/* -Dtest.skip.byteorderedpartitioner=true -Dtest.skip.murmur-serial=true -Dtest.skip.murmur-ssl=true'
+    - env: MODULE='cql' ARGS='-Dtest=**/graphdb/cql/* -Dtest.skip.murmur=true'
+    - env: MODULE='cql' ARGS='-Dtest=**/graphdb/cql/* -Dtest.skip.byteorderedpartitioner=true -Dtest.skip.murmur-serial=true -Dtest.skip.murmur-ssl=true'
 
 addons:
   apt:
     packages:
       - oracle-java8-installer
+
+install:
+  - if [[ ${TRAVIS_BRANCH} =~  ${RELEASE_REGEX} ]]; then
+        if [ "${MODULE}" != "janusgraph-release" ]; then
+            echo "Building janusgraph-${MODULE} and dependencies";
+            travis_retry travis_wait \
+                mvn install --projects janusgraph-${MODULE} --also-make \
+                -DskipTests=true -Dmaven.javadoc.skip=true --batch-mode --show-version;
+        fi;
+    fi;
 
 # A Release Branch of the form #.#.# will only build a tar file
 # and deploy to S3.  Our process will be such that we'll review
@@ -73,14 +94,18 @@ addons:
 # build the tar file.
 script:
   - if [[ ${TRAVIS_BRANCH} =~  ${RELEASE_REGEX} ]]; then
-      if [ "${MODULE}" == "janusgraph-release" ]; then
-        echo "Creating tar file called janusgraph_ibm_${TRAVIS_BRANCH}.tgz";
-        mkdir release;
-        tar -cvzf release/janusgraph_ibm_${TRAVIS_BRANCH}.tgz bin conf lib;
-      fi;
+        if [ "${MODULE}" == "janusgraph-release" ]; then
+            echo "Creating tar file called janusgraph_ibm_${TRAVIS_BRANCH}.tgz";
+            mvn clean install -DskipTests -Dgpg.skip -Pjanusgraph-release;
+            mkdir release;
+            unzip janusgraph-dist/janusgraph-dist-hadoop-2/target/janusgraph-${RELEASE_REGEX}-hadoop2.zip;
+            RELEASE_DIR="janusgraph-dist/janusgraph-dist-hadoop-2/target/janusgraph-${RELEASE_REGEX}-hadoop2";
+            tar -cvzf release/janusgraph_ibm_${TRAVIS_BRANCH}.tgz ${RELEASE_DIR}/bin ${RELEASE_DIR}/conf ${RELEASE_DIR}/lib;
+        fi;
     elif [ "${MODULE}" != "janusgraph-release" ]; then
-       mvn install -DskipTests=true -B -pl ${MODULE} -am;
-       mvn verify -pl ${MODULE} ${ARGS};
+        echo "Testing janusgraph-${MODULE}";
+        travis_retry travis_wait 50 \
+            mvn clean verify --projects janusgraph-${MODULE} -Pcoverage ${ARGS};
     fi
 
 # Create a tar file only if we're releasing on a release branch
