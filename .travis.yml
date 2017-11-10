@@ -1,25 +1,22 @@
-dist: trusty
 language: java
-sudo: true
-services:
-  - docker
+sudo: false
+
 jdk:
-  - openjdk8
+  - oraclejdk8
 
 cache:
   directories:
     - ${HOME}/.m2
 
+branches:
+  only:
+    - "ibm-0.1"
+    - /[0-9]+.[0-9]+.[0-9]+/
+
 env:
   global:
-    # This is the encrypted COVERITY_SCAN_TOKEN, created via the
-    # `travis encrypt` command using the project repo's public key.
-    - secure: "v5ixqTeb74y0vRuPcDbe3C28GDDYvqyEXA2dt+9UVU6GG7WpnmpkBf05gI1dIhp51lBhwx9WSlFBtzho+KdCBmNY/CzBRhVHe/lCQYK9Hb6uGPvuwBvC0WjJgJXsVrLFjppeRhcf+OAweVQ3uw2RPMDRvKIVMUcO1BTFjjJl6REJXNUdzGS57MtH2mmRyOEz250EwgqUELZvcOytG7fNrjMJKVK2nSsoxi0BqZIpItTWPWWeQ1wi1FplJ18A2qtD+MPfAGNSB+/a+r0Av+VCT2eGl06ZyZAzP3q/vG5IYjQ3AJsSPqcZUt4ms+2us1+kwuzXIILjzZmcfImu29+y/thndU5E5b2v+nZ4H69CUCc5OmKW2RwozLNmBIUhO0n+35va/J7FiPIqm3pwxCz5vWA3YTHDADxnIYe7+9uY/+dOK/AvP5fyu7u07vuF3liKNBdrX7ylP3kYc7FXGmYl8wCZv31iy1yTtndQ9qKef7bo8lM9Cdh39KyowrygH+Um7pr9gqf2S9jn99nQ3bib32fBWgBkLpJRwhZYHPUupZjZfgu/9woby0DuriuHZKMqZd7QUawYz6wXGlhzu78x5Tohlj1pGBwHYdcJ/Tm3PiEpyH4aYQLffkjGHJAcCW5tO8QbB0qrLYWC8xVMWuFz1TpSBRXOqVYdBfIa2UZDtOU="
-    - COVERITY_BRANCH_NAME="coverity_scan"
-    - COVERITY_EMAIL="sjudeng@gmail.com"
-    # Default Elasticsearch heap size can be too large for Travis
+    - RELEASE_REGEX=[0-9]+.[0-9]+.[0-9]+
     - ES_JAVA_OPTS="-Xms256m -Xmx512m"
-
   matrix:
     # sort modules by test time with quickest modules first
     - MODULE='server'
@@ -54,7 +51,7 @@ env:
     - MODULE='cql' ARGS='-Dtest=**/diskstorage/cql/* -Dtest.skip.byteorderedpartitioner=true -Dtest.skip.murmur-serial=true -Dtest.skip.murmur-ssl=true'
     - MODULE='cql' ARGS='-Dtest=**/graphdb/cql/* -Dtest.skip.murmur=true'
     - MODULE='cql' ARGS='-Dtest=**/graphdb/cql/* -Dtest.skip.byteorderedpartitioner=true -Dtest.skip.murmur-serial=true -Dtest.skip.murmur-ssl=true'
-    - COVERITY_ONLY=true
+    - MODULE='janusgraph-release'
 
 matrix:
   fast_finish: true
@@ -77,47 +74,58 @@ matrix:
     - env: MODULE='cql' ARGS='-Dtest=**/graphdb/cql/* -Dtest.skip.byteorderedpartitioner=true -Dtest.skip.murmur-serial=true -Dtest.skip.murmur-ssl=true'
 
 install:
-  - if [ "${TRAVIS_BRANCH}" == "${COVERITY_BRANCH_NAME}" ] && ! [ -z "${COVERITY_ONLY:-}" ]; then
-      echo "Building all modules for Coverity analysis";
-      travis_retry travis_wait \
-          mvn install -DskipTests=true -Dmaven.javadoc.skip=true --batch-mode --show-version;
-    elif [ "${TRAVIS_BRANCH}" == "${COVERITY_BRANCH_NAME}" ] || ! [ -z "${COVERITY_ONLY:-}" ]; then
-      echo "Skipping module build on Coverity branch/job";
-    else
-      echo "Building janusgraph-${MODULE} and dependencies";
-      travis_retry travis_wait \
-          mvn install --projects janusgraph-${MODULE} --also-make \
-          -DskipTests=true -Dmaven.javadoc.skip=true --batch-mode --show-version;
-    fi
+  - if [[ ${TRAVIS_BRANCH} =~  ${RELEASE_REGEX} ]]; then
+        if [ "${MODULE}" != "janusgraph-release" ]; then
+            echo "Building janusgraph-${MODULE} and dependencies";
+            travis_retry travis_wait \
+                mvn install --projects janusgraph-${MODULE} --also-make \
+                -DskipTests=true -Dmaven.javadoc.skip=true --batch-mode --show-version;
+        fi;
+    fi;
 
+# A Release Branch of the form #.#.# will only build a tar file
+# and deploy to S3.  Our process will be such that we'll review
+# the latest integration build for test results and
+# merge nto the release branch. A build will be kicked off to
+# build the tar file.
 script:
-  - if [ "${TRAVIS_BRANCH}" == "${COVERITY_BRANCH_NAME}" ] && ! [ -z "${COVERITY_ONLY:-}" ]; then
-      echo "Building Docker image for Coverity analysis";
-      docker build -t janusgraph/analysis analysis;
-      echo "Running Coverity scan";
-      travis_wait 50 \
-        docker run --rm \
-            -v ${HOME}/.m2:/root/.m2 -v ${PWD}:/opt/janusgraph \
-            -e COVERITY_SCAN_TOKEN="${COVERITY_SCAN_TOKEN}" \
-            -e COVERITY_EMAIL="${COVERITY_EMAIL}" \
-            -i janusgraph/analysis;
-    elif [ "${TRAVIS_BRANCH}" == "${COVERITY_BRANCH_NAME}" ] || ! [ -z "${COVERITY_ONLY:-}" ]; then
-      echo "Skipping module tests on Coverity branch/job";
-    else
-      echo "Testing janusgraph-${MODULE}";
-      travis_retry travis_wait 50 \
-          mvn clean verify --projects janusgraph-${MODULE} -Pcoverage ${ARGS};
+  - if [[ ${TRAVIS_BRANCH} =~  ${RELEASE_REGEX} ]]; then
+        if [ "${MODULE}" == "janusgraph-release" ]; then
+            echo "Creating tar file called janusgraph_ibm_${TRAVIS_BRANCH}.tgz";
+            mvn clean install -DskipTests -Dgpg.skip -Pjanusgraph-release;
+            mkdir release;
+            unzip janusgraph-dist/janusgraph-dist-hadoop-2/target/janusgraph-${TRAVIS_BRANCH}-hadoop2.zip;
+            RELEASE_DIR="janusgraph-${TRAVIS_BRANCH}-hadoop2";
+            cd ${RELEASE_DIR};
+            tar -cvzf ../release/janusgraph_ibm_${TRAVIS_BRANCH}.tgz bin conf lib;
+            cd ..
+        fi;
+    elif [ "${MODULE}" != "janusgraph-release" ]; then
+        echo "Testing janusgraph-${MODULE}";
+        travis_retry travis_wait 50 \
+            mvn clean verify --projects janusgraph-${MODULE} -Pcoverage ${ARGS};
     fi
 
-after_success:
-  # Upload test coverage reports to Codecov
-  - if [ "${COVERITY_SCAN_BRANCH}" == 1 ] || [ -v COVERITY_ONLY ]; then
-      echo "Skipping test coverage report upload in Coverity branch/job";
-    else
-      bash <(curl -s https://codecov.io/bash);
-    fi
+# Create a tar file only if we're releasing on a release branch
+deploy:
+  provider: s3
+  access_key_id: 'AKIAJNO3BSVBBC7DMC5Q'
+  secret_access_key:
+    secure: l9EFiHc/JohTCLqtkGCcupLeWV1Hihg45pLibivM9C11NeoSCM0MdhvVNiDIUpJvdHUwEMKQeEjqh5n/TEj8y/VlsLdFSG/U9JdYewpDow5EyhIeYZDpp0zwfjrxIPftdPx7dho/haIPKdzCps1TAYQOZYDkvaVLL/Fej2G2sHT0Ejtrtwrt4aTyVwQGTvsCBffR87rFRg6Z9suY60vR/isexsBs7LziVD4nNUgoWJeKGEhhHYr57xpnnKyZ6T9QBAbrmOe0TdGsgH6r0T1NLfd9cScS8ShxVEUDE4bBrc4+Jlk7t48mFJU7+WtMaqaiLKGJ/UF0sEbJnhg5dkL944APHjG5dQu1FCifUGj5oepBJ+9S5hDwoYEboeSGCD1DPtO19VvZcSYXn+tRCs0/m3seTujJg7/ciy26qRts50lf9LPtOp9J3dT07hVRGYMSzWXf+PHSo3QICJYeF7sw4DAgZKJa2qhksFUL73NZjMWWTER2rMkwFZbJoRT86EjfoZt1lgYkQLbBAQop25ByhYs0GTlnP6n1Qrm5J5mrQlhhm9/QKEV/qm4MM0t40FSG1KcKnpsdRIx42GNRPeBkYcXPhO6LSzecXYiEe13Y7WZ6ARzhXI5EMWqIR7PjlmwOaTBet3pgc28TTdBoPV2kDTtCpXBm3w5D4FxX1Eg8/gY=
+  bucket: 'dblayer-builds'
+  local_dir: release
+  skip_cleanup: true
+  on:
+    all_branches: true
+    condition: "(${TRAVIS_BRANCH} =~ ${RELEASE_REGEX}) && (${MODULE} = janusgraph-release) "
 
 # Syntax and more info: https://docs.travis-ci.com/user/notifications
 notifications:
   email:
-    - janusgraph-ci@googlegroups.com
+    - cjquinon@us.ibm.com
+  # Notify us of integration build failures only
+  slack: 
+    rooms:
+        - 'compose:UwF0sO1h8oZL3ARHvX19hndE#graphdb'
+    on_pull_requests: false
+    on_success: never
