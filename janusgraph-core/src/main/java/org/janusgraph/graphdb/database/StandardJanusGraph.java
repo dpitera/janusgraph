@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+Lesson for Peter May in working with remote repos, cherry-picking, etc.
+
 package org.janusgraph.graphdb.database;
 
 import com.carrotsearch.hppc.LongArrayList;
